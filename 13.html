@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>第13章 分支切割与分支定价</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📐 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html">第1章 什么是组合优化</a></li>
+            <li><a href="02.html">第2章 图论基础</a></li>
+            <li><a href="03.html">第3章 计算复杂性</a></li>
+            <li><a href="04.html">第4章 线性规划基础</a></li>
+            <li><a href="05.html">第5章 对偶理论与灵敏度分析</a></li>
+            <li><a href="06.html">第6章 贪心与动态规划</a></li>
+            <li><a href="07.html">第7章 分支定界</a></li>
+            <li><a href="08.html">第8章 网络流基础</a></li>
+            <li><a href="09.html">第9章 最小割与应用</a></li>
+            <li><a href="10.html">第10章 二分图匹配</a></li>
+            <li><a href="11.html">第11章 一般图匹配</a></li>
+            <li><a href="12.html">第12章 整数线性规划</a></li>
+            <li><a href="13.html" class="active">第13章 分支切割与分支定价</a></li>
+            <li><a href="14.html">第14章 多面体组合</a></li>
+            <li><a href="15.html">第15章 MIP求解器原理</a></li>
+            <li><a href="16.html">第16章 建模的艺术</a></li>
+            <li><a href="17.html">第17章 约束规划</a></li>
+            <li><a href="18.html">第18章 分解方法</a></li>
+            <li><a href="19.html">第19章 拟阵理论</a></li>
+            <li><a href="20.html">第20章 次模函数优化</a></li>
+            <li><a href="21.html">第21章 近似算法</a></li>
+            <li><a href="22.html">第22章 在线与随机优化</a></li>
+            <li><a href="23.html">第23章 求解器实战(上)</a></li>
+            <li><a href="24.html">第24章 求解器实战(下)</a></li>
+            <li><a href="25.html">第25章 元启发式算法</a></li>
+            <li><a href="26.html">第26章 神经组合优化</a></li>
+            <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
+            <li><a href="28.html">第28章 综合项目实战</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+
+        <h2>开篇：求解器内部的无声战争</h2>
+
+        <p>大家好，我是你们的讲师。今天的内容，来自一次让我印象非常深刻的对话。</p>
+
+        <p>2019年，我参加了一次 Gurobi 用户大会。茶歇时，我旁边坐着一位从麻省理工毕业的博士，在亚马逊做供应链优化。我好奇地问："你们用 Gurobi 求解的典型 MIP 有多大？"</p>
+
+        <p>"变量大概几百万，约束几十万。"他轻描淡写地说。</p>
+
+        <p>我差点把咖啡喷出来。几百万个 0-1 变量的整数规划——这怎么可能在合理时间内求解？</p>
+
+        <p>他笑了笑说："你猜 Gurobi 内部是怎么解的？它用的是<strong>分支切割（Branch-and-Cut）</strong>和<strong>分支定价（Branch-and-Price）</strong>两种算法框架的组合。在你的'搜索树'的每个节点，求解器都在做三件事：运行单纯形法、添加割平面收紧松弛、以及在必要时通过列生成来隐式处理数百万个变量。"</p>
+
+        <p>那一天我才真正明白：现代求解器的内核不是什么"数学魔法"，而是一套高度工程化的算法框架。这个框架的核心就是两种方法——分支切割和分支定价，以及它们的结合。</p>
+
+        <p><strong>它们为什么比纯分支定界更强？</strong>纯分支定界（第7章）在每个节点只求解 LP 松弛，然后分支。分支切割在此基础上加上了割平面——每个节点通过添加约束来收紧松弛，减少搜索树的大小。分支定价则处理另一种极端——变量太多以至于无法全部写进 LP，用列生成按需产生变量。</p>
+
+        <div class="highlight">
+            <strong>一个类比：</strong>如果把求解 MIP 比作追捕逃犯：纯分支定界是"全城地毯式搜索"；分支切割是在关键路口设置路障（割平面）缩小搜索范围；分支定价则是"只追查可疑人员，不盘问所有路人"（按需生成变量）。现代求解器把这三种策略精密地编织在一起。
+        </div>
+
+        <h2>分支切割（Branch-and-Cut）</h2>
+
+        <p><strong>分支切割（Branch-and-Cut）</strong>是将分支定界与割平面法结合起来的框架。它由 Padberg 和 Rinaldi 在1980年代提出，首次成功应用在 TSP 的求解上，震惊了运筹学界。</p>
+
+        <h3>算法框架</h3>
+
+        <p>分支切割在分支定界的每个节点上执行以下步骤：</p>
+        <ol>
+            <li>求解当前节点的 LP 松弛，得到最优解 x*</li>
+            <li>如果 x* 是整数解，更新上界（对最小化问题）</li>
+            <li>否则，调用<strong>分离子程序（Separation Routine）</strong>判断 x* 是否在整数凸包 P_I 中：</li>
+            <li>如果 x* ∉ P_I，生成一个或多个被违反的割平面，加入 LP，回到第1步</li>
+            <li>如果 x* ∈ P_I（或割平面已无法改善），则进行分支（选一个分数变量 x_j，创建左子节点 x_j ≤ ⌊x_j*⌋ 和右子节点 x_j ≥ ⌈x_j*⌉）</li>
+        </ol>
+
+        <p>注意第4步的循环——在一个节点内部可能添加<strong>多轮</strong>割平面，直到无法生成有效割平面为止。这个"添加割→重新求解→检查→再添加"的过程被称为<strong>切割循环（Cutting Loop）</strong>。</p>
+
+        <pre><code>Branch-and-Cut（伪代码）：
+
+    全局上界 = ∞, 全局下界 = -∞
+    节点队列 = {根节点}
+
+    while 节点队列不为空 and (全局上界 - 全局下界) > ε:
+        从队列取一个节点 N
+        while True:  // 切割循环
+            (x*, LP_val) = solve_LP(N)
+            if Infeasible: break
+            if LP_val ≥ 全局上界: break  // 剪枝
+            if x* 是整数:
+                全局上界 = min(全局上界, LP_val)
+                break
+            cuts = separation_routine(x*, N)
+            if cuts 为空:  // 无法进一步收紧
+                选分数变量 x_j 分支
+                子节点加入队列
+                break
+            else:
+                N.添加约束(cuts)  // 继续切割循环
+    return 全局上界</code></pre>
+
+        <div class="tip">
+            <strong>切割循环为什么重要：</strong>添加一轮割平面后，LP 最优解可能会从"割平面 A 的外侧"移动到"割平面 B 的外侧"。如果只加一轮就分支，可能错过很多收紧的机会。但这也存在一个问题：过多的切割循环可能导致"尾流效应"（tailing-off）——最后几轮割平面带来的下界改善微乎其微。实际求解器会在每轮改善小于某阈值时停止切割循环，进入分支。
+        </div>
+
+        <h2>割的家族</h2>
+
+        <p>不同的整数规划问题有不同的结构，因此需要不同的割平面来收紧松弛。以下是几种最重要的割平面类型。</p>
+
+        <h3>TSP的子环消除不等式</h3>
+
+        <p>旅行商问题（TSP）的经典公式包含<strong>子环消除不等式（Subtour Elimination Constraints）</strong>。对于任意非空真子集 S ⊂ V：</p>
+
+        <pre><code>∑_{i∈S} ∑_{j∈S, i<j} x_{ij} ≤ |S| - 1
+
+这个不等式强迫：任意 |S| 个城市之间最多只能有 |S|-1 条边，
+从而阻止了"子环"（即不包含所有城市的环）的出现。</code></pre>
+
+        <p>子环消除不等式的数量是指数级的（2^V 个），但它的分离问题是多项式可解的——通过最小 s-t 割。从城市1出发到其他城市，如果 x 中的某个子集 S 违反子环消除约束，那么 S 在残差图中就是一个最小割。这就是 TSP 的 B&C 算法的心脏。</p>
+
+        <h3>背包问题的覆盖割</h3>
+
+        <p>对于背包约束 ∑_{j=1}^n a_j x_j ≤ b（其中 a_j > 0, x_j ∈ {0,1}）：</p>
+
+        <p>一个<strong>覆盖（Cover）</strong>是指一个指标集 C ⊆ {1,...,n}，使得 ∑_{j∈C} a_j > b。对应的<strong>覆盖不等式（Cover Inequality）</strong>是：</p>
+
+        <pre><code>∑_{j∈C} x_j ≤ |C| - 1
+
+翻译：不能同时选择覆盖 C 中的所有物品——它们加起来超重了。</code></pre>
+
+        <p>覆盖不等式可以进一步强化为<strong>提升覆盖不等式（Lifted Cover Inequality）</strong>，通过引入不在 C 中的变量来加强它。</p>
+
+        <h3>MIP通用割</h3>
+
+        <p>现代求解器还使用一系列通用割平面，它们不依赖问题的具体结构：</p>
+        <ul>
+            <li><strong>Gomory 混合整数割（GMI Cuts）：</strong>我们在第12章见过的 Gomory 割的推广形式，适用于混合整数规划。</li>
+            <li><strong>混合整数舍入割（MIR Cuts）：</strong>从单个约束出发，通过"舍入"系数来生成有效不等式。</li>
+            <li><strong>Clique 割（Clique Cuts）：</strong>如果一组 0-1 变量中至多只能有一个取值为1（例如 x₁ + x₂ + ... + x_k ≤ 1），这个约束可以转化为一组二元排斥关系（clique）。</li>
+            <li><strong>流覆盖割（Flow Cover Cuts）：</strong>针对带有固定成本的网络流问题。</li>
+        </ul>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>割的类型</th>
+                    <th>适用场景</th>
+                    <th>分离复杂度</th>
+                    <th>效果</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>子环消除</td>
+                    <td>TSP、VRP（车辆路径）</td>
+                    <td>O(V·MaxFlow)</td>
+                    <td>极强</td>
+                </tr>
+                <tr>
+                    <td>覆盖割</td>
+                    <td>背包约束、资源分配</td>
+                    <td>NP-难（用启发式）</td>
+                    <td>强</td>
+                </tr>
+                <tr>
+                    <td>Gomory MIR</td>
+                    <td>通用 MIP</td>
+                    <td>O(约束数)</td>
+                    <td>中</td>
+                </tr>
+                <tr>
+                    <td>Clique 割</td>
+                    <td>0-1 规划，排斥约束</td>
+                    <td>O(V²)</td>
+                    <td>中-强</td>
+                </tr>
+                <tr>
+                    <td>梳状不等式</td>
+                    <td>TSP（大规模）</td>
+                    <td>启发式</td>
+                    <td>极强</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning">
+            <strong>割的数量不是越多越好：</strong>这是一个很多人踩过的坑——在求解器中开启"所有割方法"并把强度调到最大。这通常会适得其反。太多的割平面让每个节点的 LP 变得庞大难以求解。Gurobi 默认的割平面策略权衡了"收紧松弛"和"LP 求解时间"。我见过有人把 Cuts 参数调到 3（激进），结果求解时间反而增加了5倍。切中要害的几张割，胜过无差别的一大堆割。
+        </div>
+
+        <h2>列生成</h2>
+
+        <p>分支切割是在每个节点"加约束"。但有些问题面临相反的困难：<strong>变量太多</strong>。想象一下，一维下料问题中，一根标准长度的钢管可以切成几百种不同长度的短管——每种切法是一个变量，有数百万种可能的切法。把所有变量一次性写入 LP 是不现实的。</p>
+
+        <p><strong>列生成（Column Generation）</strong>的思想是：不枚举所有变量，而是从一个<strong>受限主问题（Restricted Master Problem, RMP）</strong>开始——只包含少量变量。然后通过求解一个<strong>定价子问题（Pricing Subproblem）</strong>来判断是否还有"值得加入"的新变量可以改善当前解。</p>
+
+        <h3>下料问题（Cutting Stock）</h3>
+
+        <p>经典的下料问题：给定若干根标准长度为 L 的钢管，需要切割出不同长度的短管（需求量 d₁, d₂, ..., d_m）。目标是使用最少的标准钢管。</p>
+
+        <ul>
+            <li><strong>主问题变量：</strong>每种"切割模式"（pattern，一个可行的切法）的使用次数</li>
+            <li><strong>约束：</strong>所有切割模式产生的第 i 种短管之和 ≥ d_i</li>
+            <li><strong>定价子问题：</strong>给定当前对偶变量 π，寻找一种新的切割模式，使得它的"降低成本"（reduced cost）为负——即这种模式能改善当前解</li>
+        </ul>
+
+        <pre><code>下料问题的列生成框架：
+
+    // 受限主问题（RMP）
+    变量：x_p = 使用切割模式 p 的次数
+    约束：∑_p a_{ip}·x_p ≥ d_i    ∀i （需求覆盖）
+          x_p ≥ 0
+
+    // 定价子问题（Pricing）
+    给定对偶变量 π（需求约束的对偶值）
+    求：max ∑_{i=1}^m π_i y_i
+    s.t. ∑_{i=1}^m l_i y_i ≤ L   （长度不能超）
+          y_i ≥ 0, 整数
+
+    如果最优值 > 1，说明存在"有利可图"的新模式</code></pre>
+
+        <p>这里的定价子问题实际上是一个<strong>背包问题</strong>——在长度为 L 的钢管中装入总价值最大的短管组合。因为 m 通常不大（10-50种短管），背包问题可以通过动态规划高效求解。</p>
+
+        <div class="highlight">
+            <strong>列生成的巧妙之处：</strong>它把"大规模 LP"的求解转化成了一个"小规模 LP + 一个组合优化子问题"的迭代过程。这是一个"分而治之"的经典案例。而且注意，定价子问题通常有自己的专用算法（DP、Dijkstra、KSP等），比单纯形法处理数百万变量快得多。
+        </div>
+
+        <h2>Dantzig-Wolfe分解</h2>
+
+        <p>列生成与<strong>Dantzig-Wolfe 分解</strong>（Dantzig-Wolfe Decomposition）紧密相关。后者提供了一种系统化的方法：把复杂的 LP/MIP 问题分解成"容易的部分"和"困难的部分"。</p>
+
+        <h3>分解思想</h3>
+
+        <p>假设我们的 LP 约束可以分为两组：</p>
+        <pre><code>min c^T x
+s.t. A₁x ≥ b₁   （"难"约束——连接约束，linking constraints）
+     A₂x ≥ b₂   （"易"约束——每个块内部约束）
+     x ≥ 0</code></pre>
+
+        <p>Dantzig-Wolfe 分解的核心是：对易约束生成的<strong>多面体 Q = {x | A₂x ≥ b₂, x ≥ 0}</strong> 使用其极点（extreme points）和极射线（extreme rays）来表示——这称为<strong>表示定理（Representation Theorem）</strong>。</p>
+
+        <p>于是原问题转化为：</p>
+        <pre><code>min c^T (∑_{p} λ_p x_p + ∑_{r} μ_r d_r)
+s.t. A₁·(∑_{p} λ_p x_p + ∑_{r} μ_r d_r) ≥ b₁
+     ∑_{p} λ_p = 1 （凸组合约束）
+     λ_p ≥ 0, μ_r ≥ 0</code></pre>
+
+        <p>这个转化后的问题的<strong>变量 = Q 的极点数</strong>——同样可能巨大。然后我们用列生成来逐一引入极点（变量）。</p>
+
+        <p><strong>定价子问题</strong>就是：在 Q 上最小化"降低成本"——即 min (c - πA₁) x，其中 π 是连接约束的对偶变量。由于 Q 是一个简单的多面体，这个子问题通常有高效的解法。</p>
+
+        <div class="tip">
+            <strong>什么时候应该用 Dantzig-Wolfe 分解？</strong>当你的问题有明显的<strong>块对角结构（Block Diagonal Structure）</strong>时——即约束矩阵可以分成几块不相交的子矩阵，只有少量"连接约束"将它们关联起来。例如航空机组排班问题：每个机组人员的排班约束是独立的块，连接约束是"每条航线必须有人飞"。没有这种块结构，Dantzig-Wolfe 分解就没意义。
+        </div>
+
+        <h2>分支定价（Branch-and-Price）</h2>
+
+        <p>最后，我们把列生成嵌入到分支定界框架中——这就是<strong>分支定价（Branch-and-Price）</strong>。</p>
+
+        <p>思路很直接：在分支树的每个节点，我们不直接求解 LP 松弛（因为变量太多），而是用列生成来隐式求解。分支则用于处理整数性约束。</p>
+
+        <p>但这里有一个<strong>关键陷阱</strong>：传统的分支策略（如对分数变量 x_j 做 x_j ≤ ⌊x_j*⌋ / x_j ≥ ⌈x_j*⌉）在列生成框架中可能不兼容——因为 x_j 可能根本不是"原始变量"，而是一个"列变量"（如某种切割模式的使用次数），分支后定价子问题可能无法正确生成与分支约束相容的新列。</p>
+
+        <h3>Ryan-Foster分支</h3>
+
+        <p>为解决这个兼容性问题，<strong>Ryan-Foster 分支</strong>（1992年）提出了一种巧妙的方法——不要对变量分支，而是对<strong>原始决策</strong>分支。</p>
+
+        <p>例如在机组排班问题中，Ryan-Foster 分支选择两个航班 i, j，创建一个分支：</p>
+        <ul>
+            <li>左分支：航班 i 和 j 必须由同一机组执行</li>
+            <li>右分支：航班 i 和 j 不能由同一机组执行</li>
+        </ul>
+
+        <p>这种分支策略的优点在于：分支条件可以轻易地传递给定价子问题。在左分支中，定价子问题在生成新列时，必须把航班 i 和 j 放在同一个排班中。在右分支中，必须确保 i 和 j 不在同一排班中。这使得定价子问题仍然保持"在图中找一条路径"的结构——只是图的条件稍微改动了一下。</p>
+
+        <div class="highlight">
+            <strong>为什么分支定价是"终极武器"？</strong>因为它同时解决了 MIP 中的两大困难——指数多的变量和指数多的约束。分支切割处理约束过多的问题（通过添加割平面隐式表示），分支定价处理变量过多的问题（通过列生成隐式表示）。当你面对的问题同时有"数以亿计的可能决策"和"错综复杂的约束"时，你需要把两种方法结合起来——这就是<strong>分支切割定价（Branch-Cut-and-Price）</strong>，Gurobi/SCIP 等顶级求解器的架构核心。
+        </div>
+
+        <p>在实际应用中，分支定价主要见于以下领域：</p>
+        <ul>
+            <li><strong>航空机组排班：</strong>每个机组人员的一个排班方案是一条"列"，定价子问题是最短路问题（带复杂约束）。</li>
+            <li><strong>车辆路径规划（VRP）：</strong>每辆车的行驶路线是一条"列"，定价子问题是带资源约束的最短路。</li>
+            <li><strong>下料问题：</strong>每种切割模式是一条"列"，定价子问题是背包问题。</li>
+        </ul>
+
+        <p>我2022年帮一家物流公司做最后一公里配送优化时，尝试了直接建模（所有可能的配送路线作为变量）。结果模型有数亿变量，Gurobi 直接崩溃。最终我们用分支定价框架——主问题是"选择哪些路线"，定价子问题是"为某辆车生成一条可行路线"（一个带时间窗的 TSP，用 DP 求解）。求解时间从"不可行"降到了2小时以内——对于每日跑一次的调度系统，完全可接受。</p>
+
+        <h2>本章小结与下章预告</h2>
+
+        <p>在这一章中，我们学习了现代 MIP 求解的核心技术：</p>
+        <ul>
+            <li>分支切割——在每个 B&B 节点添加割平面收紧 LP 松弛，切割循环的设计权衡；</li>
+            <li>割的家族——子环消除不等式（TSP）、覆盖割（背包）、Gomory/MIR/Clique 割等通用与专用割；</li>
+            <li>列生成与下料问题——受限主问题 + 定价子问题（背包）的迭代框架；</li>
+            <li>Dantzig-Wolfe 分解——将约束分为"易于"和"难"，用极点和极射线表示易约束的多面体；</li>
+            <li>分支定价——列生成嵌入分支定界，Ryan-Foster 分支确保与定价子问题的兼容性。</li>
+        </ul>
+
+        <p>下一章是<strong>第14章：多面体组合</strong>。这是本课程理论性最强的一章，也是整数规划理论的巅峰——我们将从多面体的视角重新审视"为什么有些问题容易、有些问题难"，并探讨优化和分离的等价关系。如果你能理解这一章，你就站在了组合优化理论的制高点上。我们下一章见。</p>
+
+        <div class="footer-nav">
+            <a href="12.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="14.html">下一章 →</a>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

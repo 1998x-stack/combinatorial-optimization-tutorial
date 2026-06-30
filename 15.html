@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>第15章 MIP求解器原理</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📐 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html">第1章 什么是组合优化</a></li>
+            <li><a href="02.html">第2章 图论基础</a></li>
+            <li><a href="03.html">第3章 计算复杂性</a></li>
+            <li><a href="04.html">第4章 线性规划基础</a></li>
+            <li><a href="05.html">第5章 对偶理论与灵敏度分析</a></li>
+            <li><a href="06.html">第6章 贪心与动态规划</a></li>
+            <li><a href="07.html">第7章 分支定界</a></li>
+            <li><a href="08.html">第8章 网络流基础</a></li>
+            <li><a href="09.html">第9章 最小割与应用</a></li>
+            <li><a href="10.html">第10章 二分图匹配</a></li>
+            <li><a href="11.html">第11章 一般图匹配</a></li>
+            <li><a href="12.html">第12章 整数线性规划</a></li>
+            <li><a href="13.html">第13章 分支切割与分支定价</a></li>
+            <li><a href="14.html">第14章 多面体组合</a></li>
+            <li><a href="15.html" class="active">第15章 MIP求解器原理</a></li>
+            <li><a href="16.html">第16章 建模的艺术</a></li>
+            <li><a href="17.html">第17章 约束规划</a></li>
+            <li><a href="18.html">第18章 分解方法</a></li>
+            <li><a href="19.html">第19章 拟阵理论</a></li>
+            <li><a href="20.html">第20章 次模函数优化</a></li>
+            <li><a href="21.html">第21章 近似算法</a></li>
+            <li><a href="22.html">第22章 在线与随机优化</a></li>
+            <li><a href="23.html">第23章 求解器实战(上)</a></li>
+            <li><a href="24.html">第24章 求解器实战(下)</a></li>
+            <li><a href="25.html">第25章 元启发式算法</a></li>
+            <li><a href="26.html">第26章 神经组合优化</a></li>
+            <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
+            <li><a href="28.html">第28章 综合项目实战</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+
+        <h2>开篇：求解器背后的"黑盒"</h2>
+
+        <p>大家好，我是你们的讲师。今天我们来聊聊MIP求解器——这个在工业界被无数人当作"黑盒"使用的神器。</p>
+
+        <p>我在2019年参与过一个钢铁企业的排产项目，团队里有一位工程师把问题建模成MIP后，直接扔给Gurobi求解。模型跑了两个小时还没出结果，他加了时间限制，输出一个Gap=15%的次优解就交差了。项目上线后，排产方案频频出问题——因为15%的次优意味着每天多浪费几十吨原材料。后来我帮他分析了求解器日志，发现Presolve只消除了10%的变量，割平面生成阶段几乎没有产生有效的割。问题出在哪里？他的建模用了大量冗余约束和巨大的Big-M系数，导致求解器的预求解和割生成机制完全失效。</p>
+
+        <p>这个故事的教训是：<strong>不了解求解器内部机制，你就无法写出求解器能高效求解的模型</strong>。今天这一章，我们来拆开这个黑盒，看看Gurobi、CPLEX这些求解器到底是怎么工作的。理解了这一切，你就能像调校跑车一样调校你的模型。</p>
+
+        <h2>求解器全景架构</h2>
+
+        <p>一个成熟的MIP求解器内部是一条精心设计的流水线。以Gurobi为例，其核心流程如下：</p>
+
+        <pre><code>输入(.mps/.lp) → Presolve → Root LP Relaxation
+    → Cut Loop → Branch-and-Bound Tree
+    → Heuristics (穿插运行) → 输出最优解</code></pre>
+
+        <p>每一步都有明确的目标：</p>
+
+        <ul>
+            <li><strong>Presolve（预求解）</strong>——在不改变解空间的前提下，缩小问题规模。这一步通常能消除50%~90%的变量和约束。</li>
+            <li><strong>Root LP Relaxation（根节点LP松弛）</strong>——把整数变量全部松弛为连续变量，求一个LP下界。这个下界是后续所有剪枝的基准。</li>
+            <li><strong>Cut Loop（割平面循环）</strong>——在根节点添加多个割平面来收紧松弛，提高下界。Gurobi的根节点通常耗时约占整个求解过程的10%~30%。</li>
+            <li><strong>Branch-and-Bound Tree（分支定界树）</strong>——对整数变量进行分支，在每个节点上求解LP松弛，利用界进行剪枝。</li>
+            <li><strong>Heuristics（启发式）</strong>——在分支过程中穿插运行，快速寻找可行解，提供上界。</li>
+        </ul>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>阶段</th>
+                    <th>耗时占比</th>
+                    <th>核心目标</th>
+                    <th>关键参数</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Presolve</td>
+                    <td>1%~5%</td>
+                    <td>缩小问题规模</td>
+                    <td>Presolve, PreDepRow</td>
+                </tr>
+                <tr>
+                    <td>Root LP + Cuts</td>
+                    <td>10%~30%</td>
+                    <td>提高松弛下界</td>
+                    <td>Cuts, CutsFactor</td>
+                </tr>
+                <tr>
+                    <td>Branch & Bound</td>
+                    <td>40%~70%</td>
+                    <td>搜索最优整数解</td>
+                    <td>MIPFocus, BranchDir</td>
+                </tr>
+                <tr>
+                    <td>Heuristics</td>
+                    <td>5%~20%</td>
+                    <td>快速找可行解</td>
+                    <td>Heuristics, RINS</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="tip">
+            <strong>小贴士：</strong>求解器日志中每一行都包含大量信息。学会读日志是一项关键技能——Gurobi日志中的每一行会显示当前节点编号、深度、当前上界/下界、Gap、已探索节点数等。如果发现Gap长时间不下降，通常意味着根节点下界不够紧，需要检查割平面是否被误关或模型本身松弛太弱。
+        </div>
+
+        <h2>预求解技术（Presolve）</h2>
+
+        <p>Presolve可能是求解器中最被低估的组件。很多人觉得Presolve"不过是个预处理"，但实际上，一个好的Presolve能把一个看起来规模巨大的问题压缩到可解的程度。来看一个具体例子：</p>
+
+        <pre><code>原始模型：
+max  x + 2y
+s.t. x + y ≤ 10
+     x ≥ 0, y ≥ 0
+     y ≤ 5, y ≥ 0
+     x ≥ 2
+     x + y ≥ 3
+     整数: x, y
+
+Presolve后：
+max  x + 2y
+s.t. x + y ≤ 10
+     x ∈ [2, ∞), y ∈ [0, 5]
+     整数: x, y
+     (消除了冗余约束 y ≥ 0、x ≥ 2 已经存在于边界中)</code></pre>
+
+        <p>Presolve包含几十种独立的约简技术，这里列出最常用的几类：</p>
+
+        <h3>固定变量（Variable Fixing）</h3>
+        <p>如果某个变量在可行域中只能取一个值，就直接固定。例如，如果约束 <code>2x + 3y ≤ 5</code> 且 <code>x, y ≥ 1</code> 且为整数，那么 <code>x=1, y=1</code> 是唯一可能。求解器会检测并固定这些变量。</p>
+
+        <h3>消除冗余约束</h3>
+        <p>如果一个约束被其他约束完全支配，就删除它。例如，<code>x ≥ 0</code> 且 <code>x ≥ 2</code>——前一个约束是冗余的。行数越少，LP求解越快。</p>
+
+        <h3>收紧边界（Bound Tightening）</h3>
+        <p>利用约束之间的相互作用推导更紧的变量上下界。比如 <code>x + y ≤ 10, x ≥ 6, y ≥ 0</code>，可以推出 <code>y ≤ 4</code>。这种推理可以传播好几层。</p>
+
+        <h3>系数简化</h3>
+        <p>对约束的系数做最大公约数化简。比如 <code>6x + 9y ≤ 12</code> 可以除以3得到 <code>2x + 3y ≤ 4</code>，数值稳定性更好，LP求解更快。</p>
+
+        <div class="highlight">
+            <strong>关键洞察：</strong>我见过一个真实案例——一个航空排班问题，原始模型有200万变量和500万约束。经过Gurobi的Presolve之后，只剩下30万变量和80万约束，缩减了85%的规模。Presolve后的模型在3分钟内求解完成，而如果不经过Presolve直接求解，10小时后Gap仍然高达40%。由此可见，Presolve不是"锦上添花"，很多时候是"雪中送炭"。
+        </div>
+
+        <p>但Presolve也有副作用。有些约简技术会破坏问题的结构——例如，聚合变量（variable aggregation）虽然减少了变量数，但可能让问题的约束矩阵变得更稠密，反而拖慢后续的LP求解。高级用户可以通过Gurobi的 <code>PreDual</code> 和 <code>PreDepRow</code> 参数微调Presolve的行为。</p>
+
+        <h2>原始启发式（Primal Heuristics）</h2>
+
+        <p>在分支定界树的搜索过程中，求解器需要好的上界（对最小化问题）来剪枝。原始启发式就是用来快速生成可行解的技术。需要强调的是，启发式不保证能找到最优解，但往往能在很短时间内找到一个"够好"的解。</p>
+
+        <h3>Feasibility Pump</h3>
+        <p>这是最经典的原始启发式之一，由Fischetti、Glover和Lodi在2005年提出。它的核心思想非常巧妙：</p>
+
+        <pre><code>1. 求解LP松弛，得到分数解 x_f
+2. 将 x_f "取整"为最近的整数解 x_i（可能不可行）
+3. 以 x_i 为出发点，最小化与 x_f 的距离，约束不变，求解LP
+4. 重复直到 x_i 恰好可行
+
+本质上是在"整数可行"和"LP最优"之间来回泵动，
+直到两个点重合。</code></pre>
+
+        <p>Feasibility Pump的成功率很高——对于大部分MIP问题，它可以在几十次迭代内找到一个可行解。Gurobi和CPLEX都在内部实现了多种改进版的Feasibility Pump。</p>
+
+        <h3>RINS（Relaxation Induced Neighborhood Search）</h3>
+        <p>RINS的思路是：假设我们已经有一个可行解和一个LP松弛解，把两者取值一致的变量固定下来，然后在一个大幅缩小的子MIP中搜索更好的解。这个方法由Danna、Rothberg和Le Pape在2005年提出，现在已经是所有商业求解器的标配。</p>
+
+        <h3>Local Branching</h3>
+        <p>由Fischetti和Lodi在2003年提出。给定一个可行解，增加一个约束限制"最多改变k个变量的取值"，然后在这个局部邻域中求解子MIP。如果找到了更好的解，就更新当前解并扩大邻域重新搜索；如果没有找到，就缩小邻域。</p>
+
+        <h3>零目标启发式（Zero Objective Heuristic）</h3>
+        <p>这是最朴素但也最实用的启发式：把目标函数设为零，只寻求一个可行解。求解器会优先寻找满足所有约束的解，而不关心目标值。在模型有可行解但求解器迟迟找不到可行解时，这种启发式特别有效。</p>
+
+        <div class="warning">
+            <strong>踩坑提醒：</strong>我在2021年的一个供应链项目中过度依赖了启发式。模型中有大量对称解（相同的仓库），Feasibility Pump很快找到了一个可行解，但质量很差——上界离理论下界差了40%。我以为求解器会继续改进上界，但启发式产生的"够好"解让求解器在剪枝时变得过于乐观，反而减慢了找到真正最优解的速度。后来我关闭了部分启发式选项，强制求解器多用分支和割平面，虽然第一个可行解出现的时间晚了几秒，但最终在更短的时间内找到了最优解。这个教训是：启发式不是越强越好，要根据问题的具体特征来权衡。
+        </div>
+
+        <h2>割管理与筛选</h2>
+
+        <p>割平面是MIP求解器提升下界的关键武器。但割平面不是越多越好——生成太多割会让LP问题变得臃肿，求解速度反而下降。因此，求解器需要一套精细的割管理策略。</p>
+
+        <h3>割的生成过程</h3>
+        <p>在根节点，求解器会运行多轮割平面生成循环。每一轮中，求解器会尝试生成多种类型的割：</p>
+        <ul>
+            <li><strong>Gomory割</strong>——从最优单纯形表中推导，通用性强，几乎适用于所有MIP</li>
+            <li><strong>Clique割</strong>——利用0-1变量之间的互斥关系</li>
+            <li><strong>覆盖割（Cover Cuts）</strong>——从背包约束中推导</li>
+            <li><strong>流覆盖割（Flow Cover Cuts）</strong>——针对有上下界的流约束</li>
+            <li><strong>Mixed-Integer Rounding（MIR）割</strong>——最通用的割族之一</li>
+        </ul>
+
+        <h3>筛选与过滤</h3>
+        <p>每一轮生成的割中，求解器会评估每条割的"质量"：</p>
+        <ul>
+            <li><strong>有效性</strong>——割是否真的切掉了当前的分数解？如果是，记分+1。</li>
+            <li><strong>稠密度</strong>——割中的非零系数太多会拖累LP求解，稠密度高的割会被降权。</li>
+            <li><strong>平行度</strong>——如果新割与已有割几乎平行，说明冗余，一般舍弃。</li>
+        </ul>
+
+        <h3>割的"老化"与清理</h3>
+        <p>在分支树中，某些割只在浅层节点有效，随着分支深入会变得冗余。求解器会定期清理"老化"的割，避免LP规模无限膨胀。Gurobi中有一个内部参数控制每多少个节点清理一次割池。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>割类型</th>
+                    <th>适用场景</th>
+                    <th>通常在根节点添加数量</th>
+                    <th>Gurobi参数</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Gomory</td>
+                    <td>通用</td>
+                    <td>数十到数百</td>
+                    <td>GomoryPasses</td>
+                </tr>
+                <tr>
+                    <td>Clique</td>
+                    <td>0-1变量互斥</td>
+                    <td>数十</td>
+                    <td>CliqueCuts</td>
+                </tr>
+                <tr>
+                    <td>Cover</td>
+                    <td>背包约束</td>
+                    <td>数十</td>
+                    <td>CoverCuts</td>
+                </tr>
+                <tr>
+                    <td>Flow Cover</td>
+                    <td>网络流问题</td>
+                    <td>较少</td>
+                    <td>FlowCoverCuts</td>
+                </tr>
+                <tr>
+                    <td>MIR</td>
+                    <td>通用混合整数</td>
+                    <td>数十到数百</td>
+                    <td>MIRCuts</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="tip">
+            <strong>调试技巧：</strong>如果你发现根节点松弛下界非常弱（Gap很大），可以尝试打开Gurobi的IIS（Irreducible Inconsistent Subsystem）分析，检查模型中是否有约束导致松弛过于宽松。或者调高 <code>Cuts</code> 参数到2或3（更积极），看看是否能产生更多有效割。另一方面，如果根节点耗时过长但Gap改进很小，可以把 <code>Cuts</code> 降到1甚至0，把工作留给分支过程。
+        </div>
+
+        <h2>求解器演进史</h2>
+
+        <p>MIP求解器的发展史是一部"性能竞赛"的历史。了解这段历史，你会理解今天的求解器为何如此强大。</p>
+
+        <h3>CPLEX：开拓者（1988–2018）</h3>
+        <p>CPLEX由Robert Bixby在1988年创立，最初只求解LP问题。1990年代加入分支定界和割平面后成为MIP求解器的霸主。在2000年代，CPLEX几乎就是"整数规划"的代名词——工业界都说"用CPLEX求解"而不说"用MIP求解器"。到2018年，CPLEX被IBM收购并在基准测试中长期领先。</p>
+
+        <h3>Gurobi：颠覆者（2008–至今）</h3>
+        <p>Gurobi由CPLEX的核心团队创办——是的，创始人就是Bixby本人和Zonghao Gu、Ed Rothberg。他们深知CPLEX的架构瓶颈，从零开始用更现代的C++重写了求解器内核。Gurobi 1.0在2009年发布，其MIP求解速度就超过了当时版本的CPLEX。到Gurobi 11.0（2024年），它在MIPLIB基准测试中的平均求解速度已经是20年前的500倍以上。</p>
+
+        <h3>SCIP：学术之光（2002–至今）</h3>
+        <p>SCIP由柏林Zuse研究所开发，是学术界的MIP求解器标杆。SCIP的优势在于框架的灵活性和可扩展性——研究者可以在SCIP之上方便地实现新的分支规则、割平面和启发式。但SCIP的求解速度大约比Gurobi慢3~10倍（取决于具体问题），在工业界使用较少。</p>
+
+        <h3>COPT：东方崛起（2019–至今）</h3>
+        <p>COPT（Cardinal Optimizer）由中国的杉数科技开发，近年来在MIPLIB基准测试中表现亮眼。2023年的MIP竞赛中，COPT在多个问题类别上逼近甚至超过了Gurobi的速度，打破了国外求解器近20年的垄断地位。</p>
+
+        <h3>CHAP框架：2026年的新格局</h3>
+        <p>2025年，一个名为CHAP（CPU-Hybrid Accelerated Presolve）的框架在学术界引起了巨大反响。CHAP将GPU加速引入MIP求解的多个阶段——特别是割平面生成和节点LP求解。传统上，LP求解是MIP求解的瓶颈（占70%+的时间），而GPU可以并行求解多个节点的LP松弛。2026年的MIP竞赛中，搭载CHAP框架的求解器在特定问题上（如网络流问题、大规模集合覆盖问题）取得了最快的成绩，打破了自1990年代以来CPU-centric求解架构的垄断。虽然CHAP尚未完全商业化，但它已经指明了下一阶段MIP求解器的发展方向。</p>
+
+        <div class="highlight">
+            <strong>性能数据对比：</strong>MIPLIB 2017基准测试中，Gurobi 11.0在30分钟内能求解的问题数量是CPLEX 12.10的1.8倍，是SCIP 8.0的3.5倍。COPT 7.0的求解数量是CPLEX的1.5倍。10年的求解器进步，相当于将求解速度提升了两个数量级。记住，你写的任何一个MIP模型，放在20年前的求解器上，求解时间可能要多出两个数量级。
+        </div>
+
+        <h2>本章小结与下章预告</h2>
+
+        <p>在这一章中，我们学习了：</p>
+        <ul>
+            <li>MIP求解器的全流程架构——从Presolve到Root LP到割平面循环到分支定界再到启发式；</li>
+            <li>预求解技术的核心方法——固定变量、消除冗余约束、收紧边界、系数简化；</li>
+            <li>四种重要的原始启发式——Feasibility Pump、RINS、Local Branching、零目标启发式；</li>
+            <li>割平面的生成、筛选和老化管理策略；</li>
+            <li>从CPLEX到CHAP的求解器演进史及2026年的GPU加速趋势。</li>
+        </ul>
+
+        <p>理解求解器原理是第一步，下一步更重要：<strong>怎么写出求解器能高效求解的模型？</strong>这就是下一章的主题——第16章"建模的艺术"。我们将讨论Big-M的选取陷阱、逻辑约束的线性化技巧、对称性处理，以及一个完整的建模检查清单。你会发现，同一个问题用不同的方式建模，求解速度可能差出几个数量级——而这是区分MIP新手和高手的分水岭。</p>
+
+        <p>我们下一章见。</p>
+
+        <div class="footer-nav">
+            <a href="14.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="16.html">下一章 →</a>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

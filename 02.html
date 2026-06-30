@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>第2章 图论基础</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📐 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html">第1章 什么是组合优化</a></li>
+            <li><a href="02.html" class="active">第2章 图论基础</a></li>
+            <li><a href="03.html">第3章 计算复杂性</a></li>
+            <li><a href="04.html">第4章 线性规划基础</a></li>
+            <li><a href="05.html">第5章 对偶理论与灵敏度分析</a></li>
+            <li><a href="06.html">第6章 贪心与动态规划</a></li>
+            <li><a href="07.html">第7章 分支定界</a></li>
+            <li><a href="08.html">第8章 网络流基础</a></li>
+            <li><a href="09.html">第9章 最小割与应用</a></li>
+            <li><a href="10.html">第10章 二分图匹配</a></li>
+            <li><a href="11.html">第11章 一般图匹配</a></li>
+            <li><a href="12.html">第12章 整数线性规划</a></li>
+            <li><a href="13.html">第13章 分支切割与分支定价</a></li>
+            <li><a href="14.html">第14章 多面体组合</a></li>
+            <li><a href="15.html">第15章 MIP求解器原理</a></li>
+            <li><a href="16.html">第16章 建模的艺术</a></li>
+            <li><a href="17.html">第17章 约束规划</a></li>
+            <li><a href="18.html">第18章 分解方法</a></li>
+            <li><a href="19.html">第19章 拟阵理论</a></li>
+            <li><a href="20.html">第20章 次模函数优化</a></li>
+            <li><a href="21.html">第21章 近似算法</a></li>
+            <li><a href="22.html">第22章 在线与随机优化</a></li>
+            <li><a href="23.html">第23章 求解器实战(上)</a></li>
+            <li><a href="24.html">第24章 求解器实战(下)</a></li>
+            <li><a href="25.html">第25章 元启发式算法</a></li>
+            <li><a href="26.html">第26章 神经组合优化</a></li>
+            <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
+            <li><a href="28.html">第28章 综合项目实战</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+
+        <h2>开篇：从"七桥问题"到现代图论</h2>
+
+        <p>大家好，我是你们的讲师。今天我们要聊的是图论——组合优化最重要的"画板"。让我从一个真实的故事开始。</p>
+
+        <p>2019年，我参与过一个城市配送网络优化的项目。客户是一家拥有200辆配送车的区域物流公司，他们想知道：怎么重新设计配送线路以最小化总里程？乍看这是个纯粹的TSP问题，但实际情况要复杂得多——配送中心之间可以通过干线运输调拨货物，干线网络形成一张图，每个区域内的最后一公里配送又是一张子图，两张图通过仓库节点连接。项目经理一开始尝试用贪心法直接规划，结果完全失控——因为没有理解这个"图中图"的结构，算法在局部优化里打转，总里程反而增加了5%。</p>
+
+        <p>后来我们重新审视问题：先分析干线的图结构，找到关键枢纽（也就是后续我们会学的<strong>割点</strong>和<strong>桥</strong>），最短路枢纽之间用<strong>最小生成树</strong>连接，再在每个子图上独立做TSP。最终总里程减少了18%。这个案例的关键教训是：<strong>图论不是一堆枯燥的定义，它是你理解复杂系统结构的"X光机"。</strong></p>
+
+        <p>图论（Graph Theory）的起源可以追溯到1736年——欧拉解决<strong>柯尼斯堡七桥问题（Seven Bridges of Königsberg）</strong>。当时普鲁士的柯尼斯堡城中有七座桥连接两条河流中的两个岛屿，市民们好奇是否存在一条路线能恰好经过每座桥一次并返回起点。欧拉的答案是否定的——他证明这样的路线不存在，并在这个证明中创造了图论的基本框架。今天，图论已经深入到计算机科学、运筹学、社会学、生物信息学等几乎所有领域。对于组合优化而言，图是最自然的"语言"——TSP在城市图中找最短环，网络流在管道图中找最大流量，匹配在关系图中找最优配对。</p>
+
+        <h2>图的定义与表示</h2>
+
+        <h3>基本概念</h3>
+
+        <p>一个图 <strong>G = (V, E)</strong> 由两个集合组成：<strong>顶点集合 V（Vertices）</strong>和<strong>边集合 E（Edges）</strong>。每条边连接两个顶点。就这么简单。</p>
+
+        <p>根据边的方向性，图分为两类：</p>
+
+        <ul>
+            <li><strong>无向图（Undirected Graph）</strong>：边没有方向，(u, v) = (v, u)。如道路网络（大多数道路双向通行）。</li>
+            <li><strong>有向图（Directed Graph / Digraph）</strong>：边有方向，用箭头表示，(u→v) ≠ (v→u)。如网页的链接关系、社交媒体的关注关系。</li>
+        </ul>
+
+        <p>另外几个关键术语：</p>
+
+        <ul>
+            <li><strong>度（Degree）</strong>：与一个顶点相连的边数。有向图中分为<strong>入度（In-degree）</strong>和<strong>出度（Out-degree）</strong>。</li>
+            <li><strong>路径（Path）</strong>：顶点序列，相邻顶点之间有边相连。</li>
+            <li><strong>环（Cycle）</strong>：起点和终点相同的路径。</li>
+            <li><strong>连通图（Connected Graph）</strong>：任意两个顶点之间都有路径相连。</li>
+        </ul>
+
+        <h3>图的存储方式</h3>
+
+        <p>在计算机中表示图，主要有两种方法：<strong>邻接矩阵（Adjacency Matrix）</strong>和<strong>邻接表（Adjacency List）</strong>。选择哪种取决于图的稀疏程度。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>对比维度</th>
+                    <th>邻接矩阵</th>
+                    <th>邻接表</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>存储空间</td>
+                    <td>O(V²)</td>
+                    <td>O(V + E)</td>
+                </tr>
+                <tr>
+                    <td>查询边(u,v)是否存在</td>
+                    <td>O(1)</td>
+                    <td>O(degree(u))</td>
+                </tr>
+                <tr>
+                    <td>遍历所有邻接边</td>
+                    <td>O(V)</td>
+                    <td>O(degree(u))</td>
+                </tr>
+                <tr>
+                    <td>适用场景</td>
+                    <td>稠密图（E ≈ V²）</td>
+                    <td>稀疏图（E ≪ V²）</td>
+                </tr>
+                <tr>
+                    <td>添加/删除边</td>
+                    <td>O(1)</td>
+                    <td>O(1)（使用哈希表）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <pre><code>// 邻接矩阵：V × V 的二维数组
+// 无向图是对称矩阵
+int adj[V][V] = {0};
+adj[u][v] = 1;  // 添加边 u-v
+adj[v][u] = 1;  // 无向图需要对称赋值
+
+// 邻接表：每个顶点维护一个列表
+vector&lt;int&gt; adj[V];
+adj[u].push_back(v);  // 添加边 u→v
+adj[v].push_back(u);  // 无向图</code></pre>
+
+        <div class="tip">
+            <strong>经验之谈：</strong>在组合优化中，95%以上的真实图都是稀疏图（E ≪ V²）。物流配送图中平均每个仓库连接的线路不超过10条；社交网络中平均每个人的朋友数也远小于总用户数。所以邻接表通常是首选。但在分析算法复杂度时，我们往往用"O(V²)"来保守估计——因为最坏情况下邻接矩阵的O(1)边查询可以简化分析。
+        </div>
+
+        <h2>图的遍历</h2>
+
+        <p>给定一张图，我们怎么"走遍"所有顶点？两种基本的遍历策略几乎出现在所有图算法中。</p>
+
+        <h3>广度优先搜索（BFS）</h3>
+
+        <p>BFS 使用<strong>队列（Queue）</strong>数据结构。从起点出发，先访问所有距离为1的邻居，然后是距离为2的，以此类推。想象水滴落入平静的水面，波纹一圈圈扩散——这就是 BFS。</p>
+
+        <p>BFS 最重要的性质是：在无权图中，它找到的路径是<strong>最短路径</strong>。因为 BFS 按照"距离起点由近到远"的顺序访问顶点，第一次到达目标顶点时走过的路径一定是最短的。</p>
+
+        <pre><code>BFS(G, s):
+    visited[V] = false
+    queue Q
+    visited[s] = true
+    Q.push(s)
+    while Q is not empty:
+        u = Q.pop()
+        for each neighbor v of u:
+            if not visited[v]:
+                visited[v] = true
+                dist[v] = dist[u] + 1
+                parent[v] = u
+                Q.push(v)</code></pre>
+
+        <h3>深度优先搜索（DFS）</h3>
+
+        <p>DFS 使用<strong>栈（Stack）</strong>数据结构（可以显式用栈，也可以递归实现）。从一个顶点出发，沿着一条路"走到黑"，直到没有新邻居了再回溯。想象在迷宫中走，每次遇到岔路就选一条最右边的路，走不通了退回来选另一条——这就是 DFS。</p>
+
+        <p>DFS 虽然在最短路径上不如 BFS，但它在检测<strong>连通分量</strong>、检测<strong>环</strong>、拓扑排序、求解强连通分量等问题中发挥着核心作用。</p>
+
+        <pre><code>DFS(G, u):
+    visited[u] = true
+    for each neighbor v of u:
+        if not visited[v]:
+            parent[v] = u
+            DFS(G, v)
+    // 退出时可以做后处理
+    // 例如记录结束时间戳用于拓扑排序</code></pre>
+
+        <p>两种遍历的<strong>时间复杂度都是 O(V + E)</strong>——每条边被检查一次，每个顶点被访问一次。这是图算法中最"廉价"的操作，很多复杂算法都是在遍历框架上加额外逻辑。</p>
+
+        <div class="highlight">
+            <strong>教学提示：</strong>很多初学者分不清"什么时候用 BFS，什么时候用 DFS"。一个简单的判断标准：如果问题和你到起点的距离有关（最短路径、社交网络的"几度人脉"），用 BFS；如果问题和路径的"结构"有关（连通分量、是否有环、拓扑顺序），用 DFS。用错了方向虽然也能解，但效率天差地别。
+        </div>
+
+        <h2>树与生成树</h2>
+
+        <h3>树的性质</h3>
+
+        <p><strong>树（Tree）</strong>是图论中最重要的特殊图之一。树是<strong>连通无环</strong>的图。它的几个等价性质：</p>
+
+        <ul>
+            <li>任意两个顶点之间有且仅有一条路径。</li>
+            <li>边数 = 顶点数 - 1，即 |E| = |V| - 1。</li>
+            <li>在树上添加任意一条边都会产生环。</li>
+            <li>删除任意一条边都会使树不再连通。</li>
+        </ul>
+
+        <p>树的结构简单而优雅，很多复杂的组合优化问题在树结构上可以高效求解——比如我们在第6章会学到的树上动态规划。</p>
+
+        <h3>最小生成树</h3>
+
+        <p>给定一个连通无向图 G = (V, E)，每条边有权重 w(e)。<strong>最小生成树（Minimum Spanning Tree, MST）</strong>是 G 的一个子图 T，使得 T 是一棵树（连通无环），且 T 中所有边的权重之和最小。</p>
+
+        <p>MST 的经典应用场景：铺设光纤连接所有城市，使得总长度最短；芯片布局中连接所有引脚，使得总导线长度最小。</p>
+
+        <p>求解 MST 有两个经典算法：</p>
+
+        <h4>Kruskal 算法</h4>
+        <p>将边按权重从小到大排序，依次检查每条边，如果不会形成环就加入生成树。关键工具：<strong>并查集（Union-Find）</strong>。时间复杂度 O(E log E)。</p>
+
+        <h4>Prim 算法</h4>
+        <p>从一个顶点开始，不断加入"离当前树最近"的顶点，直到所有顶点都在树中。关键工具：<strong>优先队列（Priority Queue）</strong>。时间复杂度 O(E log V)。</p>
+
+        <pre><code>// Kruskal 算法
+sort edges by weight ascending
+初始化并查集，每个顶点自成一集
+T = ∅
+for each edge (u, v) in sorted order:
+    if find(u) != find(v):  // u和v不在同一个集合
+        union(u, v)
+        T = T ∪ {(u, v)}</code></pre>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>对比维度</th>
+                    <th>Kruskal</th>
+                    <th>Prim</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>核心数据结构</td>
+                    <td>并查集</td>
+                    <td>优先队列</td>
+                </tr>
+                <tr>
+                    <td>策略</td>
+                    <td>选全局最轻边</td>
+                    <td>选离树最近的顶点</td>
+                </tr>
+                <tr>
+                    <td>时间复杂度</td>
+                    <td>O(E log E)</td>
+                    <td>O(E log V)</td>
+                </tr>
+                <tr>
+                    <td>适用场景</td>
+                    <td>稀疏图（边排序代价低）</td>
+                    <td>稠密图（优先队列优势明显）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="tip">
+            <strong>一个小故事：</strong>曾经有个学生用 Kruskal 算法处理一个百万级顶点的稠密图，排序边的 O(E log E) 直接占用了128GB内存还不够。换用 Prim 后，内存消耗降到4GB，运行时从"跑不通"变成23秒。选择正确的算法实现往往比选择正确的算法本身还要重要。
+        </div>
+
+        <h2>二分图</h2>
+
+        <p><strong>二分图（Bipartite Graph）</strong>是指顶点集合可以划分为两个不相交的子集 U 和 V，使得所有边都连接 U 中的一个顶点和 V 中的一个顶点——即每条边都"跨越"两个集合，没有边在同一个集合内部。</p>
+
+        <p>二分图的重要性怎么强调都不为过——它是<strong>匹配问题（Matching）</strong>的基础，而匹配是组合优化的核心主题之一（我们在第10-11章会深入讨论）。</p>
+
+        <h3>判定方法：BFS 染色法</h3>
+
+        <p>判断一个图是否为二分图的最简单方法：尝试用两种颜色给所有顶点染色，使得相邻顶点颜色不同。如果能做到，它就是二分图；否则不是。</p>
+
+        <pre><code>isBipartite(G):
+    给每个顶点赋颜色 color[u] = -1（未染色）
+    for each vertex v:
+        if color[v] == -1:
+            queue = {v}, color[v] = 0
+            while queue is not empty:
+                u = queue.pop()
+                for each neighbor w of u:
+                    if color[w] == -1:
+                        color[w] = 1 - color[u]  // 染相反色
+                        queue.push(w)
+                    else if color[w] == color[u]:
+                        return false  // 矛盾：非二分图
+    return true</code></pre>
+
+        <h3>二分图与奇环</h3>
+
+        <p>一个重要的等价定理：<strong>一个图是二分图当且仅当它不包含奇数长度的环</strong>（奇环）。因为沿着奇环走一圈，最终会要求一个顶点与自己颜色相同，矛盾。这个性质在后面学习"奇环收缩"等高级技巧时非常有用。</p>
+
+        <div class="highlight">
+            <strong>为什么组合优化者"痴迷"二分图？</strong>因为很多 NP 难的问题，在二分图这个特例上就有多项式算法。例如：一般图上的最大独立集是 NP 难的，但在二分图上等价于求最大匹配（Kőnig 定理）；一般图上的最小顶点覆盖是 NP 难的，但在二分图上可用最大匹配多项式求解。认识二分图，往往意味着从"不可解"到"可解"的飞跃。
+        </div>
+
+        <h2>图的连通性</h2>
+
+        <h3>连通分量与强连通分量</h3>
+
+        <p><strong>连通分量（Connected Component）</strong>是无向图中的一个最大子图，其中任意两个顶点之间都有路径相连。一个不连通的无向图由多个连通分量组成。DFS 可以轻松找到所有连通分量——对每个未访问的顶点启动一次 DFS，一次 DFS 覆盖一个完整分量。</p>
+
+        <p>对于有向图，我们需要<strong>强连通分量（Strongly Connected Component, SCC）</strong>的概念：在一个有向图中，SCC 是最大的顶点子集，其中任意两个顶点之间<strong>双向</strong>可达。</p>
+
+        <p>求解 SCC 有两个经典算法：</p>
+
+        <ul>
+            <li><strong>Kosaraju 算法</strong>：两次 DFS。第一次在原图上记录完成时间，第二次在转置图上按完成时间降序 DFS。每次 DFS 得到一个 SCC。</li>
+            <li><strong>Tarjan 算法</strong>：一次 DFS 完成，通过维护每个顶点的访问编号（dfn）和最小可达编号（low）来识别 SCC。更高效但更难理解。</li>
+        </ul>
+
+        <pre><code>// Tarjan 算法求 SCC（伪代码框架）
+int dfn[V], low[V], timestamp = 0
+stack st; bool inStack[V]
+
+Tarjan(u):
+    dfn[u] = low[u] = ++timestamp
+    st.push(u); inStack[u] = true
+    for each neighbor v of u:
+        if dfn[v] == 0:       // 未访问
+            Tarjan(v)
+            low[u] = min(low[u], low[v])
+        else if inStack[v]:   // 后向边
+            low[u] = min(low[u], dfn[v])
+    if low[u] == dfn[u]:      // u是SCC的根
+        弹出栈中直到u的所有顶点
+        这些顶点构成一个 SCC</code></pre>
+
+        <h3>割点与桥</h3>
+
+        <p><strong>割点（Cut Vertex / Articulation Point）</strong>：如果删除一个顶点使得图不再连通，这个顶点就是割点。</p>
+
+        <p><strong>桥（Bridge）</strong>：如果删除一条边使得图不再连通，这条边就是桥。</p>
+
+        <p>割点和桥是网络结构中的"脆弱点"。在通信网络设计中，割点就是单点故障风险——如果这个节点宕机，整个网络就会分裂。在物流网络中，桥就是关键运输通道——如果这个路段封闭，区域交通就会瘫痪。</p>
+
+        <p>检测割点和桥同样基于 DFS 和 low 值的概念。基本思路：在 DFS 树中，如果一个非根顶点的所有后代都无法到达该顶点的祖先（即 low[v] ≥ dfn[u]），那么 u 是割点。对于桥也有类似判据。</p>
+
+        <div class="warning">
+            <strong>一个经典的踩坑案例：</strong>我曾经见过一个团队设计灾备方案，他们使用连通分量分析找到了所有"重要节点"，但只考虑了连通分量的数量，没检查割点。结果在一次故障中，一个被忽略的割点服务器宕机，整个网络裂成三块，业务中断了4小时。如果当时做了割点分析，完全可以在那个节点部署冗余备份。图论分析不是理论游戏——它直接影响系统可靠性。
+        </div>
+
+        <h2>本章小结与下章预告</h2>
+
+        <p>在这一章中，我们学习了图论的核心概念：</p>
+
+        <ul>
+            <li>图的定义（V, E）、有向/无向、邻接矩阵与邻接表的存储与复杂度对比；</li>
+            <li>BFS 和 DFS 两种遍历方法——BFS 求最短路径，DFS 求结构性质；</li>
+            <li>树及最小生成树——Kruskal 和 Prim 两个经典算法；</li>
+            <li>二分图的定义、染色法判定、与奇环的关系；</li>
+            <li>连通分量、强连通分量、割点与桥——理解网络结构的关键概念。</li>
+        </ul>
+
+        <p>这些内容只是图论的冰山一角，但对于组合优化已经足够了。在第6章和第8-11章中，我们会反复回到图论，用它来建模和求解各类优化问题。</p>
+
+        <p>下一章是<strong>第3章：计算复杂性</strong>。我们将回答一个根本性的问题：为什么有些问题（如 MST）有高效的算法，而另一些问题（如 TSP）看似相似却难如登天？这个问题的答案，将帮助我们鉴别哪些问题值得花时间找精确算法，哪些应该退而求其次用近似算法。做好准备——这将是一次关于"可解性边界"的探索之旅。</p>
+
+        <div class="footer-nav">
+            <a href="01.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="03.html">下一章 →</a>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

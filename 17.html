@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>第17章 约束规划</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📐 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html">第1章 什么是组合优化</a></li>
+            <li><a href="02.html">第2章 图论基础</a></li>
+            <li><a href="03.html">第3章 计算复杂性</a></li>
+            <li><a href="04.html">第4章 线性规划基础</a></li>
+            <li><a href="05.html">第5章 对偶理论与灵敏度分析</a></li>
+            <li><a href="06.html">第6章 贪心与动态规划</a></li>
+            <li><a href="07.html">第7章 分支定界</a></li>
+            <li><a href="08.html">第8章 网络流基础</a></li>
+            <li><a href="09.html">第9章 最小割与应用</a></li>
+            <li><a href="10.html">第10章 二分图匹配</a></li>
+            <li><a href="11.html">第11章 一般图匹配</a></li>
+            <li><a href="12.html">第12章 整数线性规划</a></li>
+            <li><a href="13.html">第13章 分支切割与分支定价</a></li>
+            <li><a href="14.html">第14章 多面体组合</a></li>
+            <li><a href="15.html">第15章 MIP求解器原理</a></li>
+            <li><a href="16.html">第16章 建模的艺术</a></li>
+            <li><a href="17.html" class="active">第17章 约束规划</a></li>
+            <li><a href="18.html">第18章 分解方法</a></li>
+            <li><a href="19.html">第19章 拟阵理论</a></li>
+            <li><a href="20.html">第20章 次模函数优化</a></li>
+            <li><a href="21.html">第21章 近似算法</a></li>
+            <li><a href="22.html">第22章 在线与随机优化</a></li>
+            <li><a href="23.html">第23章 求解器实战(上)</a></li>
+            <li><a href="24.html">第24章 求解器实战(下)</a></li>
+            <li><a href="25.html">第25章 元启发式算法</a></li>
+            <li><a href="26.html">第26章 神经组合优化</a></li>
+            <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
+            <li><a href="28.html">第28章 综合项目实战</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+
+        <h2>开篇：一个让MIP求解器"崩溃"的排程问题</h2>
+
+        <p>大家好，我是你们的讲师。今天我们来聊一种和MIP完全不同的求解范式——约束规划（Constraint Programming, CP）。</p>
+
+        <p>2018年，我参与了一个医院手术室排程项目。问题描述很简单：N台手术、M个手术室、每个手术有预定时长和所需的特殊设备，手术室有开放时间窗口。约束包括：一个手术室同时只能做一台手术、同一台手术不能被中断、某些设备不能同时被两台手术使用。我用Gurobi花了整整一周时间建模，模型只有2000多个变量和5000多个约束——对MIP来说是小问题。结果Gurobi跑了6个小时才找到最优解，而问题需要每天早上8点前给出当天的排程方案。</p>
+
+        <p>后来一位研究约束规划的朋友告诉我，试试Google OR-Tools的CP-SAT求解器。我只花了半天时间把问题重写成CP模型，CP-SAT在42秒内就找到了最优解——不仅比MIP快500倍，而且代码只有MIP版本的1/3。我当时震惊了。同一个问题、同样的逻辑约束，只是换了求解范式，性能差异竟如此巨大。</p>
+
+        <p>这个故事告诉我们：<strong>选对工具，比优化工具更重要</strong>。这一章，我们来深入了解约束规划的思维方式、核心技术和适用场景。</p>
+
+        <h2>CP vs MIP：两种思维方式</h2>
+
+        <p>约束规划和MIP整数规划不是"谁取代谁"的关系，它们是两种互补的求解范式。理解它们的核心差异，是选择正确工具的前提。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>对比维度</th>
+                    <th>MIP（混合整数规划）</th>
+                    <th>CP（约束规划）</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>核心机制</td>
+                    <td>LP松弛 + 分支定界 + 割平面</td>
+                    <td>约束传播 + 域缩减 + 回溯搜索</td>
+                </tr>
+                <tr>
+                    <td>问题类型</td>
+                    <td>优化问题（有明确目标函数）</td>
+                    <td>约束满足问题（CSP）和优化问题均可</td>
+                </tr>
+                <tr>
+                    <td>变量类型</td>
+                    <td>整数、连续、二进制</td>
+                    <td>整数域、集合、区间（高度结构化）</td>
+                </tr>
+                <tr>
+                    <td>约束表达</td>
+                    <td>线性（或二阶锥）不等式</td>
+                    <td>全局约束、逻辑约束、表约束</td>
+                </tr>
+                <tr>
+                    <td>松弛方式</td>
+                    <td>LP松弛（线性规划）</td>
+                    <td>域传播（domain propagation）</td>
+                </tr>
+                <tr>
+                    <td>搜索方式</td>
+                    <td>分支定界（基于LP信息）</td>
+                    <td>回溯搜索（基于域信息）</td>
+                </tr>
+                <tr>
+                    <td>优势领域</td>
+                    <td>数值密集型（预算、成本、资源分配）</td>
+                    <td>逻辑密集型（排程、调度、路径规划）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>以手术室排程问题为例，MIP需要把所有约束翻译成线性不等式——"两台手术不能同时在同一手术室"这个约束，在MIP中需要引入大量的二进制变量和Big-M约束。而在CP中，你可以直接说"所有手术室的时间段互不重叠"，CP求解器内部有专门的全局约束来处理这种重叠约束，不需要用户手写Big-M。</p>
+
+        <div class="highlight">
+            <strong>核心洞察：</strong>MIP和CP的差异可以用一句通俗的话概括：MIP擅长"数量推理"——计算预算、约束资源总量、优化成本；CP擅长"逻辑推理"——安排顺序、分配资源、满足复杂的依赖关系。手术室排程问题恰好是逻辑密集型的典型问题，所以CP完胜。但如果是投资组合优化这种数值密集型问题，MIP仍然是更好的选择。
+        </div>
+
+        <h2>全局约束</h2>
+
+        <p>全局约束（Global Constraints）是CP最强大的武器。一个全局约束封装了大量结构化约束信息，CP求解器可以对它进行专门的、高效的域传播。最常见的全局约束包括以下几种。</p>
+
+        <h3>all-different</h3>
+        <p>这是最经典的全局约束。当我们说 <code>all-different(x₁, x₂, ..., xₙ)</code> 时，意思是这n个变量的取值必须互不相同。在MIP中，我们需要引入O(n²)个约束来保证这一点。在CP中，all-different利用二分图匹配算法（Hall定理）进行高效的域传播：</p>
+
+        <pre><code>输入：x₁ ∈ {1,2,3}, x₂ ∈ {1,2}, x₃ ∈ {2,3}
+约束：all-different(x₁, x₂, x₃)
+
+推理过程（利用Hall定理）：
+- 变量 {x₂, x₃} 的值域并集 = {2,3}，大小=2，恰好等于变量数
+  → 这2个变量必须占用{2,3}两个值
+  → x₁的值域被缩减为 {1}
+- 类似地，推导出 x₂=2, x₃=3 或 x₂=3, x₃=2
+
+域传播结果是 x₁ 被固定为1，x₂、x₃的值域被缩减为各剩两个可能值。</code></pre>
+
+        <p>这个传播过程的时间复杂度是O(n²·log n)（基于二分图匹配），远比暴力枚举高效。</p>
+
+        <h3>cumulative（累积约束）</h3>
+        <p>Cumulative约束用于调度问题：给定一组任务（每个有开始时间、持续时间和资源消耗量），以及一个总资源容量，确保在任何时间点上，所有正在执行的任务的资源消耗总量不超过总容量。</p>
+
+        <pre><code>cumulative(
+    [start₁, start₂, ..., startₙ],  # 任务开始时间
+    [dur₁, dur₂, ..., durₙ],        # 持续时间
+    [req₁, req₂, ..., reqₙ],        # 资源需求量
+    capacity                         # 总资源容量
+)</code></pre>
+
+        <p>Cumulative约束的域传播非常强大：它不仅能在时间维度上进行"时间表"推理（Timetabling），还能检测任务的紧密度，提前推断出某些任务必须提前或推迟。这个约束在作业车间调度（JSP）和资源约束项目调度（RCPSP）中是不可或缺的。</p>
+
+        <h3>element（元素约束）</h3>
+        <p>Element约束表达"数组索引"操作：<code>element(arr, idx) = val</code> 表示数组arr在索引idx处的值等于val。这在MIP中需要大量辅助变量和约束来表达，而在CP中是一个原生支持的操作。</p>
+
+        <h3>NoGood约束</h3>
+        <p>NoGood是CP回溯搜索中最重要的约束：当搜索到达一个失败节点时，NoGood记录了"导致失败的变量取值组合"，并作为一个新的约束加入模型，避免再次探索相同或类似的路径。高效的NoGood管理是CP求解器性能的关键。</p>
+
+        <div class="tip">
+            <strong>工程师视角：</strong>全局约束是CP的"超级武器"。如果你从MIP转到CP，最需要改变的习惯就是："不要用逻辑来表达约束，去查找CP库中是否有现成的全局约束"。例如，Google OR-Tools的CP-SAT提供了超过30种全局约束，覆盖了排程、路径规划、资源分配等绝大多数工业场景。使用全局约束不仅代码更简洁，求解效率通常比手写线性化高出一个数量级。
+        </div>
+
+        <h2>CP-SAT求解器</h2>
+
+        <p>CP-SAT是Google OR-Tools中的核心CP求解器，也是近年来进步最快的组合优化求解器之一。它的名字已经揭示了它的本质：CP + SAT（布尔可满足性）的混合体。</p>
+
+        <h3>CP-SAT的混合架构</h3>
+        <p>CP-SAT的内部架构远不止"约束传播+回溯"这么简单。它是一个三引擎混合作战系统：</p>
+
+        <ul>
+            <li><strong>SAT引擎</strong>——将所有约束转化为SAT子句（CNF），利用布尔约束传播（BCP）、子句学习和冲突驱动回溯（CDCL）技术。这是CP-SAT速度的核心——现代SAT求解器的冲突驱动学习机制，是约束传播的"涡轮增压"版本。</li>
+            <li><strong>LP松弛引擎</strong>——CP-SAT内部集成了一个轻量级的LP求解器，用于在根节点和关键节点上计算目标函数的下界。这是CP-SAT区别于传统CP求解器的地方——传统CP对优化问题不擅长，但加入LP松弛后，CP-SAT在优化问题上也能提供界信息。</li>
+            <li><strong>约束传播引擎</strong>——传统的CP域传播，对全局约束（all-different, cumulative等）进行域缩减。</li>
+        </ul>
+
+        <pre><code>CP-SAT内部流水线：
+
+输入模型 → 转化为SAT变量 → 预处理(Preprocessing)
+→ 根节点传播(CP+LP) → 搜索循环:
+    ① 变量选择（VSIDS启发式）
+    ② 赋值传播（BCP + CP域传播）
+    ③ 冲突检测 → 冲突分析 → 学习新子句(NoGood)
+    ④ 回溯 → 重新传播</code></pre>
+
+        <h3>CP-SAT vs Gurobi：2026年的格局</h3>
+        <p>在2020年，CP-SAT和Gurobi的差距还很大——Gurobi在绝大多数MIP基准问题上领先2~5倍。但到2026年，情况发生了显著变化：CP-SAT在排程问题（调度、排程、路径规划）上已经明显超越Gurobi，在组合优化的一般问题上（集合覆盖、背包、设施选址）与Gurobi基本持平。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>问题类型</th>
+                    <th>CP-SAT 2026</th>
+                    <th>Gurobi 11.0</th>
+                    <th>推荐工具</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>作业车间调度（JSP）</td>
+                    <td>优胜 2~10x</td>
+                    <td>慢</td>
+                    <td>CP-SAT</td>
+                </tr>
+                <tr>
+                    <td>护士排班</td>
+                    <td>优胜 3~15x</td>
+                    <td>慢</td>
+                    <td>CP-SAT</td>
+                </tr>
+                <tr>
+                    <td>车辆路径（VRP）</td>
+                    <td>持平或略优</td>
+                    <td>持平或略优</td>
+                    <td>两者均可</td>
+                </tr>
+                <tr>
+                    <td>投资组合优化</td>
+                    <td>慢</td>
+                    <td>优胜 2~5x</td>
+                    <td>Gurobi</td>
+                </tr>
+                <tr>
+                    <td>设施选址（FLP）</td>
+                    <td>持平</td>
+                    <td>持平</td>
+                    <td>两者均可</td>
+                </tr>
+                <tr>
+                    <td>TSP（精确求解）</td>
+                    <td>略慢</td>
+                    <td>略优</td>
+                    <td>Gurobi</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight">
+            <strong>一个重要的提醒：</strong>基准测试是对"平均情况"的表现统计，但你的具体问题可能偏离平均值很远。我的建议是：如果一个项目中的问题天然适合CP的表达方式（排程、排班、路径规划），在CP-SAT上花一两天做原型尝试，如果不行再换Gurobi。不要默认选择MIP——尤其是在2026年，CP-SAT已经足够成熟，值得成为你工具箱中的"第一选项"之一。
+        </div>
+
+        <h2>CP + MIP 混合建模</h2>
+
+        <p>工业界的真实问题往往既有逻辑密集的部分，又有数值密集的部分。一个自然的思路是：用CP处理逻辑部分，用MIP处理数值部分，然后让两者协作求解。</p>
+
+        <h3>混合框架的接口设计</h3>
+        <p>CP和MIP的混合求解可以通过多种方式实现：</p>
+
+        <ul>
+            <li><strong>松耦合——顺序求解</strong>：先用CP求解逻辑约束，得到一组可行的方案；再用MIP在缩小后的解空间中做数值优化。这种方式的优势是简单，但可能错过全局最优。</li>
+            <li><strong>紧耦合——嵌套求解</strong>：MIP作为主框架，CP作为子问题求解器（例如，列生成中的定价子问题可以用CP来求解）。这种方式保持了全局最优性，但工程实现复杂度高。</li>
+            <li><strong>Unified框架</strong>：CP-SAT本身已经是CP+MIP的混合体，所以对于大多数问题，直接在CP-SAT中建模即可，不需要手动搭建混合框架。</li>
+        </ul>
+
+        <p>以供应链规划为例：上游的采购决策（选择供应商、签订合同）适合MIP，因为涉及大量的成本计算和预算约束；下游的配送排程（安排卡车路线、装载顺序）适合CP，因为涉及复杂的时序和空间约束。一个混合框架可以让MIP先确定采购方案，然后把每个方案交给CP做配送评估，MIP再根据CP反馈的结果调整采购方案。</p>
+
+        <div class="warning">
+            <strong>踩坑故事：</strong>2022年我尝试构建一个CP-MIP混合求解一个大型制造排程问题。我把所有的顺序约束交给CP，把成本优化交给MIP，然后用一个反馈循环连接两者。第一版跑出来，CP和MIP各自为政——CP给MIP的方案被MIP认为成本太高而拒绝，MIP给CP的方案被CP认为不可行而拒绝。两者在10小时的求解中打了无数个回合，最后什么解都没出。后来我反思，问题出在"接口太粗糙"——CP和MIP之间的信息交换太少了，CP只给了MIP一个方案，而MIP只反馈了一个"太贵"的标签。正确的做法是CP同时传递多个备选方案，MIP给出每个方案的松弛下界作为反馈。</div>
+
+        <h2>实际案例</h2>
+
+        <p>来看三个经典的CP应用案例，看看CP在实际中如何解决问题。</p>
+
+        <h3>案例一：护士排班（Nurse Rostering）</h3>
+        <p>问题描述：一家医院有30名护士，需要排7×24小时的班表。每个护士每天可以值早班、晚班、夜班或休息。约束包括：每个班次最少需要的人数、每个护士每周最多连续工作5天、每个护士每两周至少休息一个周末、夜班后必须有24小时休息——以及护士个人偏好（比如"我不喜欢周日夜班"）。</p>
+        <p>在CP-SAT中，这个问题的建模只需要几行约束：</p>
+
+        <pre><code># 每个班次的人数要求
+for each shift, day:
+    model.Add(sum(nurse_assigned[n][d][s] for n in nurses) >= min_required[s])
+
+# 连续工作不超过5天
+for each nurse:
+    model.AddCumulative(nurse_shift_starts, durations, 1, max_consecutive)
+
+# 护士个人偏好（soft constraint, 用 penalty 实现惩罚目标）
+for each nurse, day, shift:
+    if preference[n][d][s] == 'dislike':
+        model.Add(sum(nurse_assigned[n][d][s]) == 0).OnlyEnforceIf(pref_violation)
+        objective_terms.append(pref_violation * penalty)</code></pre>
+
+        <p>CP-SAT在30秒内找到最优解，而同样规模的MIP模型需要15分钟以上。</p>
+
+        <h3>案例二：体育赛程安排</h3>
+        <p>为一个有20支球队的联赛排赛程。约束包括：每支球队与每个对手打两场（主客场）、每支球队不能连续三场在主场、每支球队的客场旅行不能超过两周、节假日必须安排特定球队的主场比赛。这种约束密集的逻辑问题，是CP的天然强项。</p>
+
+        <h3>案例三：考试时间表</h3>
+        <p>大学期末考试排程：每个学生参加的考试不能冲突、每个时间段最多容纳50场考试、某些考试必须安排在上午、某些考试必须安排在同一天的不同时段（因为同一门课有多个班级）。这也是一个典型的CSP（约束满足问题），CP-SAT可以在几分钟内排好一个大学的考试时间表。</p>
+
+        <div class="tip">
+            <strong>学习资源推荐：</strong>如果你想深入实践CP，Google OR-Tools CP-SAT的官方文档和示例（GitHub上or-tools仓库的examples目录）是最好的学习材料。CP-SAT的Python API非常直观，而且性能卓越。另外，IBM CP Optimizer也是一个强大的商业CP求解器，与Gurobi互补。
+        </div>
+
+        <h2>本章小结与下章预告</h2>
+
+        <p>在这一章中，我们学习了：</p>
+        <ul>
+            <li>CP与MIP两种范式的核心差异——域传播vs LP松弛，以及各自擅长的领域；</li>
+            <li>全局约束的威力——all-different（基于二分图匹配的域传播）、cumulative（调度资源约束）、element、NoGood；</li>
+            <li>CP-SAT求解器的三引擎混合架构——SAT+LP+CP传播，以及2026年与Gurobi的性能对比；</li>
+            <li>CP+MIP混合建模的策略与工程挑战；</li>
+            <li>三个经典CP实战案例——护士排班、体育赛程、考试时间表。</li>
+        </ul>
+
+        <p>CP和MIP都是"单块求解"（monolithic）的范式——你把整个问题交给一个求解器，它一股脑地求解。但对于规模特别大或结构特别特殊的问题，一块求解器的性能天花板很快就到了。下一章，我们将讨论一种完全不同的求解思路——<strong>分解方法（Decomposition Methods）</strong>。核心思想是：把一个难解的大问题拆成多个好解的小问题，然后通过迭代协调它们之间的交互。这就是Benders分解、Lagrange松弛和列生成的本质。</p>
+
+        <p>我们下一章见。</p>
+
+        <div class="footer-nav">
+            <a href="16.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="18.html">下一章 →</a>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

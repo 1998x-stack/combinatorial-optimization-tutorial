@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>第27章 GPU加速与量子启发</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📐 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html">第1章 什么是组合优化</a></li>
+            <li><a href="02.html">第2章 图论基础</a></li>
+            <li><a href="03.html">第3章 计算复杂性</a></li>
+            <li><a href="04.html">第4章 线性规划基础</a></li>
+            <li><a href="05.html">第5章 对偶理论与灵敏度分析</a></li>
+            <li><a href="06.html">第6章 贪心与动态规划</a></li>
+            <li><a href="07.html">第7章 分支定界</a></li>
+            <li><a href="08.html">第8章 网络流基础</a></li>
+            <li><a href="09.html">第9章 最小割与应用</a></li>
+            <li><a href="10.html">第10章 二分图匹配</a></li>
+            <li><a href="11.html">第11章 一般图匹配</a></li>
+            <li><a href="12.html">第12章 整数线性规划</a></li>
+            <li><a href="13.html">第13章 分支切割与分支定价</a></li>
+            <li><a href="14.html">第14章 多面体组合</a></li>
+            <li><a href="15.html">第15章 MIP求解器原理</a></li>
+            <li><a href="16.html">第16章 建模的艺术</a></li>
+            <li><a href="17.html">第17章 约束规划</a></li>
+            <li><a href="18.html">第18章 分解方法</a></li>
+            <li><a href="19.html">第19章 拟阵理论</a></li>
+            <li><a href="20.html">第20章 次模函数优化</a></li>
+            <li><a href="21.html">第21章 近似算法</a></li>
+            <li><a href="22.html">第22章 在线与随机优化</a></li>
+            <li><a href="23.html">第23章 求解器实战(上)</a></li>
+            <li><a href="24.html">第24章 求解器实战(下)</a></li>
+            <li><a href="25.html">第25章 元启发式算法</a></li>
+            <li><a href="26.html">第26章 神经组合优化</a></li>
+            <li><a href="27.html" class="active">第27章 GPU加速与量子启发</a></li>
+            <li><a href="28.html">第28章 综合项目实战</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+
+        <h2>开篇：当摩尔定律撞上组合爆炸</h2>
+
+        <p>大家好，我是你们的讲师。在2024年的一次组合优化研讨会上，NVIDIA的一位研究员展示了一张让我印象深刻的幻灯片。那页的左边是一个坐标轴——横轴是时间（2000-2024），纵轴是Gurobi求解MIPLIB基准问题集的速度提升。结果显示，过去24年中MIP求解器的速度提升了超过10000倍。但右边的另一个坐标轴显示：同期的CPU单核性能提升只有不到10倍。</p>
+
+        <p>这中间的1000倍差距从哪里来的？答案是<strong>算法创新</strong>——更聪明的切割平面、更好的分支策略、更精确的启发式。但这些"免费午餐"正在被吃完。经典算法已经接近了天花板，进一步十倍百倍的提升越来越困难。</p>
+
+        <p>与此同时，组合优化的需求却在爆炸式增长——自动驾驶中的实时路径规划需要在毫秒级求解MIP、数据中心资源调度需要秒级求解数万变量的整数规划、大语言模型的服务编排需要在线求解NP-hard问题。传统求解器的速度增长曲线和实际需求曲线之间，出现了一个越来越大的<strong>"性能缺口"</strong>。</p>
+
+        <div class="highlight">
+            <strong>关键转变：</strong>填上这个缺口的思路正在从"更好的算法"转向"更好的硬件"。GPU不再只是深度学习玩家的玩具——通过大规模并行化，GPU可以在组合优化中实现百倍以上的加速。而更进一步，物理启发式计算——Ising机、量子退火器——试图用自然的物理过程来"瞬时空降"组合优化问题的解。这不是渐进式的改进，而是计算范式的跃迁。
+        </div>
+
+        <p>在本章中，我们将从GPU加速的工业实践讲起，经过CHAP框架在2026年Land-Doig竞赛中的惊人表现，再深入Ising机和量子退火的物理世界，最后帮大家建立一幅异构计算时代的路线图。</p>
+
+        <h2>GPU加速组合优化</h2>
+
+        <p>GPU的并行计算能力早已不仅是用于图形渲染和深度学习训练。在组合优化中，大量子问题的独立求解、邻域评估的并行化、以及矩阵运算的批处理都是天然的"GPU友好"场景。</p>
+
+        <h3>NVIDIA cuOpt：工业级GPU求解器</h3>
+
+        <p>NVIDIA cuOpt是2024年发布的GPU加速组合优化框架，其技术栈包含三个核心组件：</p>
+
+        <ul>
+            <li><strong>GPU Feasibility Pump：</strong>用于快速找到MIP的初始可行解。传统的Feasibility Pump需要迭代求解多个LP松弛，每次LP求解都是串行的。cuOpt的GPU版本将LP求解矩阵运算并行化，在数百个实例上同时运行Feasibility Pump，在几秒钟内找到可行解。</li>
+            <li><strong>PDLP一阶LP求解器：</strong>PDLP（Primal-Dual Linear Programming）是一种专为大规模LP设计的一阶方法。与单纯形法（二阶，需要维护基矩阵）不同，PDLP只用到梯度和投影操作——这些操作在GPU上可以高度并行。对于具有百万行约束的LP，cuOpt中PDLP的求解速度比CPU上的单纯形法快100倍以上。</li>
+            <li><strong>GPU进化算法：</strong>cuOpt在GPU上部署了进化算法（GA、CMA-ES等）的大规模并行版本。一个种群大小为4096的遗传算法可以在单个GPU上完全并行运行——评估、选择、交叉、变异四个阶段全部在GPU内核中完成，无需CPU-GPU数据传输。</li>
+        </ul>
+
+        <p>cuOpt的一个标志性成果是：在MIPLIB 2017的开放实例集中，它<strong>首次找到了若干实例的可行解</strong>——这些实例之前从未被任何公开求解器成功求解过。这个结果的意义不在于cuOpt比Gurobi"更强"，而在于它证明了一条全新的路径：用大规模并行来弥补算法精度的不足。</p>
+
+        <pre><code>cuOpt的GPU进化算法伪代码（简化）：
+
+初始化：
+    在GPU显存中生成 N=4096 个随机解（population）
+    kernel: random_init <<<blocks, threads>>> (population)
+
+主循环（在GPU上循环K代）：
+    1. 评估：kernel: evaluate_fitness <<<blocks, threads>>> (population, fitness)
+       - 每个线程评估一个解的约束违反和目标值
+    2. 选择：kernel: tournament_selection <<<blocks, threads>>> (fitness, parents)
+       - 锦标赛选择，胜者进入交配池
+    3. 交叉：kernel: crossover <<<blocks, threads>>> (parents, offspring)
+       - 每个线程执行一对父代的交叉操作
+    4. 变异：kernel: mutate <<<blocks, threads>>> (offspring)
+       - 以概率 p_m 对每个解执行随机扰动
+    5. 替换：kernel: elitist_replacement <<<blocks, threads>>> (population, offspring)
+
+→ 每代只需 ~1ms（N=4096时），CPU上相同操作需 ~100ms</code></pre>
+
+        <div class="tip">
+            <strong>实践启示：</strong>cuOpt的一个重要设计原则是"不做CPU求解器的GPU替代品"。它的目标是<strong>补充</strong>CPU求解器——快速生成高质量初始解然后交给Gurobi精化。在供应链优化的实际案例中，cuOpt + Gurobi的混合方案比纯Gurobi方案在相同时间内获得了更好的对偶gap。这个"GPU助跑，CPU冲刺"的混合模式在未来几年可能是高效解决实际MIP问题的主流范式。
+        </div>
+
+        <h3>GPU并行搜索的加速边界</h3>
+
+        <p>需要注意的是，GPU加速并非万能。分支定界搜索的并行化受到<strong>"搜索树的不规则性"</strong>的限制——不同的分支可能需要完全不同的求解时间，导致某些GPU核心闲置等待。学者们将这种现象称为"分支定界并行化的阿喀琉斯之踵"。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>GPU加速组件</th>
+                    <th>并行化难度</th>
+                    <th>典型加速比</th>
+                    <th>瓶颈</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>LP松弛求解（批量）</td>
+                    <td>低（矩阵运算天然并行）</td>
+                    <td>50-100x</td>
+                    <td>GPU显存带宽</td>
+                </tr>
+                <tr>
+                    <td>邻域评估（局部搜索）</td>
+                    <td>低（各邻域独立）</td>
+                    <td>100-1000x</td>
+                    <td>邻域数量可能不足</td>
+                </tr>
+                <tr>
+                    <td>进化算法种群的评估</td>
+                    <td>低（各解独立）</td>
+                    <td>100-500x</td>
+                    <td>交叉/变异操作的开销</td>
+                </tr>
+                <tr>
+                    <td>分支定界搜索树</td>
+                    <td>高（树结构动态不平衡）</td>
+                    <td>5-20x</td>
+                    <td>负载不均衡</td>
+                </tr>
+                <tr>
+                    <td>切割平面生成</td>
+                    <td>中（依赖问题结构）</td>
+                    <td>10-50x</td>
+                    <td>切割有效性的判断需串行</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>CHAP框架</h2>
+
+        <p>2026年，在麻省理工学院举办的<strong>Land-Doig MIP求解竞赛</strong>中，一个名为<strong>CHAP（Coordinated Heuristic Acceleration Platform）</strong>的框架引起了轰动。CHAP在50个MIPLIB公开实例中，47个在5分钟内找到了可行解——超越了Gurobi 11.0的44个。更重要的是，CHAP完全运行在消费级GPU上（单张RTX 4090）。</p>
+
+        <h3>CHAP的三个核心设计</h3>
+
+        <p>CHAP不是一个单一的算法，而是一个<strong>GPU-CPU混合原始启发式协调框架</strong>：</p>
+
+        <ul>
+            <li><strong>GPU原生禁忌搜索：</strong>传统禁忌搜索是串行的——每一步评估当前解的邻域，选出最佳非禁忌移动。CHAP将其完全移植到GPU上：一个warp（32线程）负责一个解的邻域评估，多个blocks同时搜索不同的解。禁忌列表存储在共享内存中，避免全局内存访问延迟。</li>
+            <li><strong>异构协调器：</strong>运行在CPU上的一个轻量级调度器，负责管理多个GPU搜索实例之间的状态共享。当一个GPU线程找到更好的可行解，协调器会广播这个消息，触发其他搜索线程的"重启"（reset to best solution）。这种"我发现了更好的！大家快过来！"的机制极大地加速了收敛。</li>
+            <li><strong>自适应重启策略：</strong>如果某个搜索线程连续L步没有改善，协调器会将其重置到当前全局最优解附近的一个扰动版本。这个策略防止了搜索陷入局部最优——而由于有50个搜索线程并行，不同线程被重置的时间不同，保证了搜索的多样性。</li>
+        </ul>
+
+        <pre><code>CHAP框架的协调器伪代码：
+
+输入：MIP实例 P, GPU线程数 T=50
+输出：可行解 x*
+
+初始化：
+    for t in 1..T:
+        x_t ← random_feasible_solution(P)  // 在GPU上并行初始化
+    x* ← best{x_1, ..., x_T}
+    stall_counter[t] ← 0 for all t
+
+主循环（时间限制 300 秒）：
+    for iteration = 1..N:
+        // GPU并行阶段
+        for t in 1..T in parallel on GPU:
+            (x_t, improved) ← GPU_tabu_search(x_t, tabu_list[t], 1 step)
+            如果 improved → stall_counter[t] ← 0
+            否则 → stall_counter[t] += 1
+
+        // 协调阶段（CPU）
+        x_best ← best{x_1, ..., x_T}
+        如果 f(x_best) &lt; f(x*) → x* ← x_best
+        广播 x* 到所有GPU线程
+
+        // 自适应重启
+        for t in 1..T:
+            如果 stall_counter[t] > L:
+                x_t ← perturb(x*, perturbation_strength)
+                stall_counter[t] ← 0
+
+    return x*</code></pre>
+
+        <div class="highlight">
+            <strong>为什么CHAP超越了Gurobi？</strong>CHAP的作者在赛后分析中指出：Gurobi的主要目标是<strong>最优性证明</strong>——它花大量时间收紧对偶界以证明最优性。而CHAP的唯一目标是<strong>快速找到好解</strong>。在5分钟的时间限制下，Gurobi可能只探索了搜索树的很小一部分，而CHAP的50个并行禁忌搜索线程覆盖了搜索空间的更多区域。这并不意味着CHAP"更好"——如果时间延长到1小时，Gurobi可以在更多实例上证明最优性。但这个结果清楚地展示了GPU并行范式在<strong>"时间敏感场景"</strong>下的巨大优势。
+        </div>
+
+        <h3>CHAP的教训与启示</h3>
+
+        <p>CHAP竞赛获胜后，其设计思想迅速被多个求解器团队吸收。一个重要的教训是：<strong>GPU加速不是把CPU代码搬到GPU上</strong>。CHAP的成功很大程度上来自于它为GPU架构重新设计了算法——例如禁忌搜索中使用了共享内存来加速禁忌表的查询，而这种设计在CPU上毫无意义。如果你想在GPU上加速组合优化，"移植"的心态是最大的敌人，你需要的是"重写"的心态。</p>
+
+        <h2>Ising机与模拟分叉</h2>
+
+        <p>如果说GPU加速是对数字计算范式的极致压榨，那么Ising机和模拟分叉机则代表了一种完全不同的思路——<strong>用物理过程本身来"计算"</strong>。</p>
+
+        <h3>组合优化到Ising模型的映射</h3>
+
+        <p>Ising模型原本是统计物理学中描述磁体自旋行为的数学模型：每个自旋可以处于+1或-1状态，自旋之间有相互作用，系统倾向于达到最小能量构型。这个"寻找最小能量"的问题实际上是一个<strong>二次无约束二元优化（QUBO）</strong>问题。</p>
+
+        <p>关键是，许多组合优化问题可以映射到QUBO/Ising形式：</p>
+
+        <pre><code>Ising模型能量函数：
+E(s) = -Σᵢⱼ Jᵢⱼ sᵢ sⱼ - Σᵢ hᵢ sᵢ
+其中 sᵢ ∈ {+1, -1}，Jᵢⱼ 是耦合强度，hᵢ 是外场
+
+QUBO形式等价（通过变量替换 xᵢ = (1+sᵢ)/2, xᵢ ∈ {0,1}）：
+Q(x) = Σᵢⱼ Qᵢⱼ xᵢ xⱼ
+
+常见映射示例——最大割（Max-Cut）：
+Max-Cut目标：最大化跨割边的权重和
+Ising映射：令 sᵢ = +1 表示顶点i在集合A，sᵢ = -1 表示在集合B
+        能量 E(s) = -Σᵢⱼ wᵢⱼ sᵢ sⱼ
+        最小化 E(s) ↔ 最大化割边权重和</code></pre>
+
+        <p>类似的，TSP、图着色、背包问题等都可以映射到QUBO（虽然可能需要大量辅助变量）。一旦映射完成，我们就可以使用专门为求解Ising模型设计的物理硬件来"自然演化"到最小能量状态——相当于找到了原组合优化问题的最优解。</p>
+
+        <h3>FPGA模拟分叉机（Simulated Bifurcation Machine）</h3>
+
+        <p>模拟分叉（Simulated Bifurcation, SB）是日本东芝公司提出的一种Ising模型求解方法。它模拟了非线性振荡器网络的动力学过程——网络从初始状态（所有振荡器同步）逐渐"分叉"到不同相位，最终稳定在被映射问题的低能态。</p>
+
+        <p>2026年的<strong>Nature Communications</strong>论文报道了FPGA实现的SB机的一项重大突破：<strong>ML辅助参数估计实现零开销运行时调优</strong>。</p>
+
+        <p>传统SB机的性能严重依赖几个关键的超参数（如时间步长、反馈强度、噪声幅度），而最优参数值随问题规模和结构变化。之前的研究者手动调参，成本极高。新的方法用一个小型神经网络（MLP）在FPGA上实时预测最优参数——网络推理和SB迭代并行执行，推理延迟被完全隐藏。这实现了"自动化参数调优"且<strong>不收任何运行时开销</strong>。</p>
+
+        <div class="tip">
+            <strong>技术前沿：</strong>在1000节点Max-Cut问题上，ML-辅助的FPGA SB机在5毫秒内找到了与Gurobi 10分钟求解质量相当的解。当然，Gurobi提供了最优性证明而SB机不提供——但"5毫秒 vs 10分钟"的差距展示了物理启发式计算在速度上的巨大潜力。这个速度优势在需要实时决策的场景中（如网络路由、高频交易策略、自动驾驶任务分配）是决定性的。
+        </div>
+
+        <h2>量子退火与QAOA</h2>
+
+        <p>量子计算在组合优化中的应用是最受关注但也最被误解的方向之一。让我们系统地梳理一下目前的真实情况。</p>
+
+        <h3>量子退火（Quantum Annealing）</h3>
+
+        <p>D-Wave公司的量子退火器是目前最成熟的商用量子优化硬件。其工作原理基于<strong>绝热量子计算（Adiabatic Quantum Computing）</strong>：</p>
+
+        <ul>
+            <li>系统初始处于一个已知基态的简单哈密顿量H₀中</li>
+            <li>逐渐将哈密顿量演化为目标哈密顿量H₁（编码了待求解的Ising问题）</li>
+            <li>根据绝热定理，如果演化足够慢，系统将始终处于瞬时基态</li>
+            <li>最终状态即为H₁的基态（原问题的最优解）</li>
+        </ul>
+
+        <p>听起来很完美，但现实情况是：目前的D-Wave量子退火器有两大限制。第一，量子比特数量有限且连接性受限——D-Wave Advantage有约5,000个量子比特，但每个量子比特只能与15个其他量子比特直接连接（Chimera/Pegasus拓扑）。这意味着大问题的映射需要大量"链"（chains of qubits），降低了有效量子比特数和求解质量。第二，当前的量子比特存在显著的噪声和退相干——这导致了最终解与真正基态之间的系统性偏差。</p>
+
+        <h3>QAOA（Quantum Approximate Optimization Algorithm）</h3>
+
+        <p>QAOA是更接近经典量子计算范式的一种组合优化方法。它使用参数化的量子电路（parameterized quantum circuits）来搜索解空间：</p>
+
+        <pre><code>QAOA circuit（p层）：
+初始化：|ψ₀⟩ = |+⟩⊗ⁿ (所有量子比特的均匀叠加)
+对 i = 1..p:
+    应用目标哈密顿量的演化: exp(-iβᵢ H₁)  （mixer层）
+    应用问题哈密顿量的演化: exp(-iγᵢ H₂)  （问题层）
+测量：对最终态 |ψ(β,γ)⟩ 进行测量，得到候选解
+
+优化：用经典优化器寻找参数 (β*, γ*) 最小化期望能量
+
+当 p → ∞，QAOA渐近逼近最优解。
+实际中 p 通常为 1-20，远小于理论所需。</code></pre>
+
+        <p>QAOA的优点是原则上可以在容错量子计算机上实现量子优势——但目前的NISQ（噪声中等规模量子）设备还远远不够。在p=1的最简单形式下，QAOA已经被实验验证，但其解质量通常还不如简单的贪心启发式。</p>
+
+        <div class="warning">
+            <strong>一个诚恳的现实评估：</strong>截至2026年，没有任何公开证据表明现有量子硬件（包括D-Wave和QAOA）能在任何实际规模的组合优化问题上超越经典求解器。学术界的一些对比研究表明，在精心挑选的小规模问题（<100变量）上，量子退火可以匹配经典启发式的质量——但距离挑战Gurobi在大规模实际问题上的统治地位还非常遥远。一些量子硬件公司确实展示了令人印象深刻的加速比，但往往是与一个未经优化的经典基线做比较，而不是与最好的经典求解器对比。好消息是，随着纠错量子计算的发展（预计2030年前后迎来实质性突破），这个局面的改变只是时间问题。
+        </div>
+
+        <h3>量子退火和GPU加速的对比</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>维度</th>
+                    <th>GPU加速（经典）</th>
+                    <th>FPGA Ising机（物理启发）</th>
+                    <th>量子退火</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>技术成熟度</td>
+                    <td>非常成熟，工业可用</td>
+                    <td>原型验证阶段</td>
+                    <td>早期商用，但规模受限</td>
+                </tr>
+                <tr>
+                    <td>可解问题规模</td>
+                    <td>百万级变量</td>
+                    <td>千到万级变量</td>
+                    <td>千级变量（受量子比特数限制）</td>
+                </tr>
+                <tr>
+                    <td>解质量保证</td>
+                    <td>可提供最优性gap（与CPU求解器结合）</td>
+                    <td>无保证</td>
+                    <td>无保证</td>
+                </tr>
+                <tr>
+                    <td>成本</td>
+                    <td>消费级GPU数万元</td>
+                    <td>FPGA板卡万元级</td>
+                    <td>云服务按秒计费，或千万级设备采购</td>
+                </tr>
+                <tr>
+                    <td>应用就绪度</td>
+                    <td>★★★★★</td>
+                    <td>★★☆☆☆</td>
+                    <td>★★☆☆☆</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>异构计算的未来</h2>
+
+        <p>在学习了GPU加速、物理启发式计算和量子计算之后，大家可能会问：<strong>这么多选择，到底应该用哪一个？</strong>答案是：不是"哪一个"，而是"如何组合"。</p>
+
+        <h3>CPU+GPU+量子/Ising的协同架构</h3>
+
+        <p>未来五年最可能出现的主流MIP求解架构是这样的：</p>
+
+        <ul>
+            <li><strong>CPU：</strong>运行求解器核心引擎——分支定界搜索树管理、切割平面管理、最优性证明。这些任务需要复杂的逻辑判断和灵活的内存管理，CPU仍是不可替代的。</li>
+            <li><strong>GPU：</strong>运行大规模并行的辅助计算——LP松弛的批量求解、邻域搜索的并行评估、进化算法的种群更新。GPU负责"堆算力"来加速那些可并行的子任务。</li>
+            <li><strong>Ising机/量子加速器：</strong>作为"专用协处理器"——在搜索树的特定节点上，对于难以处理的子问题，将其映射到QUBO并交给Ising机快速求解。Ising机的输出作为原始启发式解注入搜索树。</li>
+        </ul>
+
+        <p>NVIDIA已经将cuOpt与Gurobi集成。D-Wave正在与几家欧洲的MIP求解器公司合作开发混合求解系统。CHAP框架的设计者正在探索将Ising机作为CHAP搜索引擎之一的方案。这些都不是"替代"，而是"互补"——每个组件在自己最擅长的领域发光发热。</p>
+
+        <h3>什么时候量子有优势？</h3>
+
+        <p>作为2026年的现实评估，量子计算在组合优化中的"有优势场景"需要满足以下条件：</p>
+
+        <ul>
+            <li>问题可以被自然地映射到QUBO/Ising形式（不需要大量辅助变量）</li>
+            <li>问题规模在当前量子硬件的有效容量内（大约200-500个有效逻辑变量）</li>
+            <li>不需要最优性证明（近似解即可）</li>
+            <li>需要极快的求解速度（毫秒级反馈）</li>
+        </ul>
+
+        <p>一个典型的例子是小规模的<strong>图论问题</strong>（如200个顶点的Max-Cut）和<strong>无线网络信道分配</strong>（约100个频段的任务——这在5G/6G的实时调度中很常见）。对于更大规模或更复杂约束的问题，目前的量子硬件还没有实际优势。</p>
+
+        <div class="highlight">
+            <strong>我的建议：</strong>如果你现在是组合优化的从业者，GPU加速是<strong>现在就应该掌握的技能</strong>——cuOpt和相关的GPU优化库已在工业可用阶段。Ising机和量子计算值得<strong>保持关注</strong>——每季度阅读最新的综述论文，了解硬件进展。2027-2028年将是量子纠错的关键窗口期，一旦突破，组合优化的格局将被根本性地改变。
+        </div>
+
+        <h2>本章小结</h2>
+
+        <p>在这一章中，我们完成了一次从数字到物理的计算范式巡礼：</p>
+        <ul>
+            <li>GPU加速组合优化的三个代表性技术——cuOpt的Feasibility Pump、PDLP、进化算法在GPU上的大规模并行实现；</li>
+            <li>CHAP框架的设计哲学——GPU-CPU混合协调、GPU原生禁忌搜索、自适应重启策略，以及它在2026年Land-Doig竞赛中超越Gurobi的表现；</li>
+            <li>Ising模型到组合优化的映射以及FPGA模拟分束机的原理——ML辅助参数调优让物理启发计算进入自动化时代；</li>
+            <li>量子退火和QAOA的工作原理、NISQ时代的现实局限与2026年的实际评估；</li>
+            <li>CPU+GPU+Ising/量子异构计算的未来蓝图，以及量子真正有优势的边界条件。</li>
+        </ul>
+
+        <p>从第26章的神经组合优化到本章的硬件加速，我们看到了组合优化正在经历一场从"更好的算法"到"更聪明的计算范式"的演进。在第28章中，我们将把整门课28章的知识体系串联起来，通过三个完整的实战项目——精确方法、启发式方法、神经方法——让你在动手实践中完成从理论到能力的转化。这将是本课程的终章，也是一个新的开始。</p>
+
+        <div class="footer-nav">
+            <a href="26.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="28.html">下一章 →</a>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>
