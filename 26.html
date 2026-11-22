@@ -5,11 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第26章 神经组合优化</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,10 +52,12 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 26 章 · 神经组合优化</p>
+        <h1>神经组合优化</h1>
 
-        <h2>开篇：从"算"到"学"的范式转变</h2>
+        <h2>开篇：从“算”到“学”的范式转变</h2>
 
         <p>大家好，我是你们的讲师。在前面的25章中，我们花了大量篇幅学习各种算法——分支定界、切割平面、列生成、模拟退火……这些东西有一个共同点：它们都是在<strong>"算"</strong>——给定一个问题实例，算法从零开始搜索、枚举、迭代，最后给出答案。这个范式的隐含假设是：每一次求解都是独立的，上一个实例的经验对下一个实例毫无帮助。</p>
 
@@ -132,6 +145,43 @@
 
         <p>理解了"为什么"之后，我们来学习"怎么做"。神经组合优化最早期的突破来自一个优雅的架构设计——让神经网络学会"指向"输入序列中的元素，从而自然地输出一个排列。</p>
 
+<figure>
+  <svg viewBox="0 0 720 310" role="img" aria-labelledby="c26Title c26Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c26Title">指针网络与注意力模型的编码器—解码器结构</title>
+    <desc id="c26Desc">输入是 N 个城市坐标，经编码器（LSTM 或 Transformer）得到节点嵌入 h1 到 hn；解码器结合上下文与指针注意力在所有未访问城市上计算分布，选出下一个城市，逐步拼成访问序列。指针箭头从解码器指回输入节点。</desc>
+    <defs><marker id="c26Arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#4f46e5"/></marker></defs>
+    <g font-family="system-ui,'PingFang SC',sans-serif" text-anchor="middle">
+      <rect x="16" y="96" width="138" height="76" rx="14" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="85" y="128" font-size="13.5" font-weight="700" fill="#4c1d95">输入</text>
+      <text x="85" y="150" font-size="12" fill="#5b21b6">N 个城市坐标</text>
+      <rect x="196" y="96" width="170" height="76" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="281" y="124" font-size="13.5" font-weight="700" fill="#166534">编码器</text>
+      <text x="281" y="146" font-size="12" fill="#14532d">LSTM / Transformer</text>
+      <rect x="408" y="96" width="164" height="76" rx="14" fill="#cffafe" stroke="#0891b2" stroke-width="1.5"/>
+      <text x="490" y="124" font-size="13.5" font-weight="700" fill="#155e75">解码器</text>
+      <text x="490" y="146" font-size="12" fill="#164e63">指针注意力 → 概率分布</text>
+      <rect x="614" y="96" width="90" height="76" rx="14" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="659" y="128" font-size="13.5" font-weight="700" fill="#92400e">输出</text>
+      <text x="659" y="150" font-size="12" fill="#78350f">访问序列 π</text>
+    </g>
+    <g stroke="#4f46e5" stroke-width="2" marker-end="url(#c26Arrow)" fill="none">
+      <line x1="154" y1="134" x2="192" y2="134"/>
+      <line x1="366" y1="134" x2="404" y2="134"/>
+      <line x1="572" y1="134" x2="610" y2="134"/>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="12" text-anchor="middle" fill="#3730a3">
+      <circle cx="230" cy="256" r="18" fill="#fff" stroke="#818cf8" stroke-width="1.5"/><text x="230" y="261">h1</text>
+      <circle cx="300" cy="256" r="18" fill="#fff" stroke="#818cf8" stroke-width="1.5"/><text x="300" y="261">h2</text>
+      <circle cx="380" cy="256" r="18" fill="#fff" stroke="#818cf8" stroke-width="1.5"/><text x="380" y="261">h3</text>
+      <circle cx="460" cy="256" r="18" fill="#fff" stroke="#818cf8" stroke-width="1.5"/><text x="460" y="261">hn</text>
+    </g>
+    <path d="M490 176 C 490 226, 300 236, 300 236" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#c26Arrow)"/>
+    <text x="360" y="228" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#b91c1c">指针：指向被选中的城市</text>
+    <text x="16" y="40" font-family="system-ui,'PingFang SC',sans-serif" font-size="17" font-weight="700" fill="#312e81">编码器—解码器 + 指针注意力</text>
+  </svg>
+  <figcaption>图 1：指针网络 / 注意力模型的编码器—解码器结构（教学示意图，依据本章对 Pointer Network 与 Attention Model 的描述绘制）。输出概率分布的定义域随输入规模 N 变化，因此可以“指向”任意输入城市。</figcaption>
+</figure>
+
         <h3>Pointer Network的起源</h3>
 
         <p>2015年，Vinyals等人在NIPS上发表了<em>Pointer Networks</em>。传统的Seq2Seq模型（如机器翻译中使用的）有一个根本局限：输出词汇表是固定的。但在组合优化中，输出必须从输入中选择——比如TSP中，每一步选择的"下一个城市"必须是输入中给定的城市之一，输出词汇表随问题规模变化。</p>
@@ -142,6 +192,8 @@
 解码器：LSTM生成解码状态 sₜ
 注意力：uⱼᵗ = vᵀ tanh(W₁hⱼ + W₂sₜ)  (j = 1,...,n)
 指向：p(yₜ | y₁,...,yₜ₋₁, X) = softmax(uᵗ)</code></pre>
+
+        <p>用公式写成：<span class="math-scroll"><math display="inline" aria-label="注意力打分 u j 上标 t 等于 v 转置乘以双曲正切，作用于 W1 乘以 h j 加上 W2 乘以 s t"><msubsup><mi>u</mi><mi>j</mi><mi>t</mi></msubsup><mo>=</mo><msup><mi>v</mi><mo>⊤</mo></msup><mi>tanh</mi><mo>(</mo><msub><mi>W</mi><mn>1</mn></msub><msub><mi>h</mi><mi>j</mi></msub><mo>+</mo><msub><mi>W</mi><mn>2</mn></msub><msub><mi>s</mi><mi>t</mi></msub><mo>)</mo></math></span>，第 <em>j</em> 个输入节点的指针概率为 <span class="math-scroll"><math display="inline" aria-label="第 j 个节点的选择概率等于对注意力打分向量取 softmax"><msub><mi>p</mi><mi>j</mi></msub><mo>=</mo><mi>softmax</mi><mo>(</mo><msup><mi>u</mi><mi>t</mi></msup><mo>)</mo></math></span>。</p>
 
         <p>这里最关键的是：softmax的输出维度等于输入序列的长度n，所以模型可以"指向"任意一个输入位置。而且由于注意力权重依赖于当前解码状态，模型可以学会考虑已经访问过的城市，避免重复。</p>
 
@@ -228,6 +280,21 @@ Transformer编码器（3层×8头注意力）：
 λ 是惩罚系数。λ的大小决定了"满足约束"相对于"优化目标"的重要程度。</code></pre>
 
         <p>这里有一个经典的踩坑经验：惩罚系数λ的设置非常敏感。设得太小，网络学会了无视约束；设得太大，网络变得极度保守，不敢探索有风险但可能更好的解。我见过一个团队花了两周时间调λ——最后发现用一个动态的、随训练进程逐渐增大的λ调度策略效果最好。这个技巧和强化学习中的<strong>课程学习（Curriculum Learning）</strong>有异曲同工之妙。</p>
+
+        <section class="widget" aria-labelledby="ncoHead">
+            <h3 id="ncoHead">动手：拆解 REINFORCE with Baseline 的梯度</h3>
+            <p>策略梯度公式里每一项都有明确含义。先想想为什么要有 baseline，再展开对照。</p>
+            <button type="button" id="ncoBtn" aria-expanded="false" aria-controls="ncoPanel">展开逐项解释</button>
+            <div id="ncoPanel" hidden>
+                <ul>
+                    <li><strong>L(π)</strong>：采样解 π 的实际代价（如 TSP 环长）。</li>
+                    <li><strong>b(s)</strong>：基准值，用来降低方差。它可以是贪心 rollout 的代价或历史平均值。</li>
+                    <li><strong>L(π) − b(s)</strong>：优势估计。解比基准好时为正，概率被抬高；比基准差时为负，概率被压低。</li>
+                    <li><strong>∇log p<sub>θ</sub>(π|s)</strong>：概率对参数的梯度方向，决定“怎么改参数能提高该序列的概率”。</li>
+                </ul>
+                <p>baseline 不影响期望梯度的无偏性（因为 E[b(s)∇log p] = 0），但能显著减小方差，是 NCO 训练能稳定的关键技巧之一。</p>
+            </div>
+        </section>
 
         <h2>GNN+传统方法融合</h2>
 
@@ -358,8 +425,21 @@ Transformer编码器（3层×8头注意力）：
             <a href="index.html">📖 返回目录</a>
             <a href="27.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('ncoBtn');
+    var panel = document.getElementById('ncoPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        panel.hidden = open;
+        btn.textContent = open ? '展开逐项解释' : '收起逐项解释';
+    });
+})();
+</script>
 </body>
 </html>
