@@ -5,11 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第4章 线性规划基础</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +52,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 4 章 · 线性规划基础</p>
+        <h1>线性规划基础</h1>
 
         <h2>开篇：一个工厂长的烦恼</h2>
 
@@ -98,13 +111,38 @@
             <strong>一个关键洞察：</strong>线性规划的"线性"二字既是优点也是限制。优点是：线性约束定义了一个凸集，凸集上的线性函数极值一定在边界上，这大大简化了求解。限制是：现实世界的很多关系是非线性的——例如固定成本（要么为零要么为一个固定值）就无法用线性函数表示。这就是为什么我们需要整数线性规划（第12章）来处理离散决策。但先学好 LP，因为它是一切的基础。
         </div>
 
-        <h2>LP 的标准型</h2>
+        <figure>
+  <svg viewBox="0 0 520 340" role="img" aria-labelledby="c4Title c4Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c4Title">二维线性规划的可行域与最优顶点</title>
+    <desc id="c4Desc">在 x 星号与 y 星号构成的平面中，四个不等式约束围成一个五边形可行域，顶点依次为原点、（4,0）、（4,1）、（2,3）、（0,3）。目标函数 3x+2y 沿方向（3,2）平移，在顶点（4,1）处达到最大值 14。</desc>
+    <g stroke="#94a3b8" stroke-width="1.5">
+      <line x1="60" y1="290" x2="460" y2="290"/><line x1="60" y1="290" x2="60" y2="40"/>
+    </g>
+    <text x="455" y="308" font-family="system-ui,sans-serif" font-size="13" fill="#475569">x</text>
+    <text x="42" y="48" font-family="system-ui,sans-serif" font-size="13" fill="#475569">y</text>
+    <polygon points="60,290 280,290 280,235 170,125 60,125" fill="#ede9fe" fill-opacity="0.75" stroke="#7c3aed" stroke-width="2.5"/>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280" text-anchor="middle">
+      <text x="170" y="312">可行域（凸多面体）</text>
+    </g>
+    <line x1="150" y1="240" x2="250" y2="173" stroke="#dc2626" stroke-width="2.5" marker-end="url(#c4Arrow)"/>
+    <defs><marker id="c4Arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/></marker></defs>
+    <text x="262" y="176" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" font-weight="700" fill="#b91c1c">目标方向 (3, 2)</text>
+    <circle cx="280" cy="235" r="7" fill="#dc2626"/>
+    <text x="290" y="252" font-family="system-ui,'PingFang SC',sans-serif" font-size="13" font-weight="700" fill="#b91c1c">最优顶点 (4, 1)，z = 14</text>
+    <text x="150" y="150" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#4c1d95">x+y ≤ 5</text>
+  </svg>
+  <figcaption>图 1：二维线性规划的几何直觉（教学示意图）。约束围成凸多面体可行域，目标函数等值线沿 (3,2) 方向平移，最优点落在顶点 (4, 1) 上。</figcaption>
+</figure>
+
+<h2>LP 的标准型</h2>
 
         <p>为了统一分析和算法设计，线性规划有一个<strong>标准型（Standard Form）</strong>：</p>
 
         <pre><code>max  cᵀx
 s.t. Ax ≤ b
      x ≥ 0</code></pre>
+
+        <p>用数学符号写成：<span class="math-scroll"><math display="inline" aria-label="标准型：在约束 A x 小于等于 b 且 x 大于等于 0 下，对 x 最大化 c 转置乘以 x"><munder><mo>max</mo><mi>x</mi></munder><msup><mi>c</mi><mo>⊤</mo></msup><mi>x</mi><mspace width="0.5em"></mspace><mtext>s.t.</mtext><mspace width="0.5em"></mspace><mi>A</mi><mi>x</mi><mo>≤</mo><mi>b</mi><mo>,</mo><mspace width="0.3em"></mspace><mi>x</mi><mo>≥</mo><mn>0</mn></math></span>。</p>
 
         <p>其中 x ∈ ℝⁿ 是决策向量，c ∈ ℝⁿ 是目标系数向量，A ∈ ℝᵐˣⁿ 是约束系数矩阵，b ∈ ℝᵐ 是右端项向量。</p>
 
@@ -142,6 +180,25 @@ s.t. Ax ≤ b
         <div class="tip">
             <strong>小练习：</strong>试着将家具厂问题转化为标准型。注意目标已经是 max，所有约束都是 ≤，变量都是非负的……实际上家具厂问题已经天然符合标准型！但在更复杂的模型中，你可能需要对变量做拆分或对约束做转换。建议你拿一个 min 型 + 含等式约束的例子练练手。
         </div>
+
+        <section class="widget" aria-labelledby="lpHead">
+            <h3 id="lpHead">验证：最优解真的在顶点上吗？</h3>
+            <p>对图 1 的可行域，目标函数是 <strong>z = 3x + 2y</strong>。先自己算几个顶点的 z 值，再展开对照。</p>
+            <button type="button" id="lpBtn" aria-expanded="false" aria-controls="lpPanel">展开顶点目标值</button>
+            <div id="lpPanel" hidden>
+                <table>
+                    <thead><tr><th>顶点 (x, y)</th><th>z = 3x + 2y</th></tr></thead>
+                    <tbody>
+                        <tr><td>(0, 0)</td><td>0</td></tr>
+                        <tr><td>(4, 0)</td><td>12</td></tr>
+                        <tr><td><strong>(4, 1)</strong></td><td><strong>14</strong>（最大）</td></tr>
+                        <tr><td>(2, 3)</td><td>12</td></tr>
+                        <tr><td>(0, 3)</td><td>6</td></tr>
+                    </tbody>
+                </table>
+                <p>五个顶点的 z 值中 (4, 1) 最大，且可行域内部或边中点都不会超过它——这正是“线性目标在凸多面体上的最优值一定在顶点取得”的含义。</p>
+            </div>
+        </section>
 
         <h2>单纯形法</h2>
 
@@ -288,8 +345,21 @@ s.t. Aᵀy ≥ c
             <a href="index.html">📖 返回目录</a>
             <a href="05.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('lpBtn');
+    var panel = document.getElementById('lpPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        panel.hidden = open;
+        btn.textContent = open ? '展开顶点目标值' : '收起顶点目标值';
+    });
+})();
+</script>
 </body>
 </html>
