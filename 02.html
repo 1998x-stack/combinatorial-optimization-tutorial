@@ -5,11 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第2章 图论基础</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,10 +52,12 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 2 章 · 图论基础</p>
+        <h1>图论基础</h1>
 
-        <h2>开篇：从"七桥问题"到现代图论</h2>
+        <h2>开篇：从“七桥问题”到现代图论</h2>
 
         <p>大家好，我是你们的讲师。今天我们要聊的是图论——组合优化最重要的"画板"。让我从一个真实的故事开始。</p>
 
@@ -76,7 +89,32 @@
             <li><strong>连通图（Connected Graph）</strong>：任意两个顶点之间都有路径相连。</li>
         </ul>
 
-        <h3>图的存储方式</h3>
+        <figure>
+  <svg viewBox="0 0 560 300" role="img" aria-labelledby="c2Title c2Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c2Title">一个无向图及其顶点度数</title>
+    <desc id="c2Desc">图 G 含五个顶点 A 到 E。A 连接 B、C、D，度数为 3；B 连接 A、C，度数为 2；C 连接 A、B，度数为 2；D 连接 A、E，度数为 2；E 只连接 D，度数为 1。度数为 1 的顶点是叶节点。</desc>
+    <g stroke="#8b5cf6" stroke-width="2.5">
+      <line x1="150" y1="80" x2="330" y2="80"/>
+      <line x1="150" y1="80" x2="120" y2="200"/>
+      <line x1="150" y1="80" x2="400" y2="200"/>
+      <line x1="330" y1="80" x2="120" y2="200"/>
+      <line x1="400" y1="200" x2="490" y2="120"/>
+    </g>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="15" font-weight="700" text-anchor="middle">
+      <circle cx="150" cy="80" r="24" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="150" y="86" fill="#4c1d95">A</text>
+      <circle cx="330" cy="80" r="24" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="330" y="86" fill="#4c1d95">B</text>
+      <circle cx="120" cy="200" r="24" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="120" y="206" fill="#4c1d95">C</text>
+      <circle cx="400" cy="200" r="24" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="400" y="206" fill="#166534">D</text>
+      <circle cx="490" cy="120" r="24" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="490" y="126" fill="#92400e">E</text>
+    </g>
+    <text x="150" y="36" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280">deg = 3</text>
+    <text x="330" y="36" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280">deg = 2</text>
+    <text x="490" y="84" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#92400e">叶节点 deg = 1</text>
+  </svg>
+  <figcaption>图 1：无向图 G = (V, E) 与顶点度数示例（教学示意图）。顶点 A 的度数最高为 3，E 的度数为 1，是叶节点；无向图中所有顶点的度数之和等于边数的两倍。</figcaption>
+</figure>
+
+<h3>图的存储方式</h3>
 
         <p>在计算机中表示图，主要有两种方法：<strong>邻接矩阵（Adjacency Matrix）</strong>和<strong>邻接表（Adjacency List）</strong>。选择哪种取决于图的稀疏程度。</p>
 
@@ -176,6 +214,20 @@ adj[v].push_back(u);  // 无向图</code></pre>
         <div class="highlight">
             <strong>教学提示：</strong>很多初学者分不清"什么时候用 BFS，什么时候用 DFS"。一个简单的判断标准：如果问题和你到起点的距离有关（最短路径、社交网络的"几度人脉"），用 BFS；如果问题和路径的"结构"有关（连通分量、是否有环、拓扑顺序），用 DFS。用错了方向虽然也能解，但效率天差地别。
         </div>
+
+        <section class="widget" aria-labelledby="bfsHead">
+            <h3 id="bfsHead">动手练：手算 BFS 距离</h3>
+            <p>以图 1 中的图为例，从顶点 A 出发做 BFS。先自己推一遍，再点按钮对答案。</p>
+            <button type="button" id="bfsBtn" aria-expanded="false" aria-controls="bfsPanel">显示答案</button>
+            <div id="bfsPanel" hidden>
+                <ul>
+                    <li>dist(A) = 0（起点）</li>
+                    <li>dist(B) = 1、dist(C) = 1、dist(D) = 1（A 的直接邻居）</li>
+                    <li>dist(E) = 2（E 只与 D 相邻，经 D 到达）</li>
+                </ul>
+                <p>注意：B、C 之间存在边，但它不改变任一顶点的 BFS 距离——BFS 只关心“最少边数”。</p>
+            </div>
+        </section>
 
         <h2>树与生成树</h2>
 
@@ -351,8 +403,21 @@ Tarjan(u):
             <a href="index.html">📖 返回目录</a>
             <a href="03.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('bfsBtn');
+    var panel = document.getElementById('bfsPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        panel.hidden = open;
+        btn.textContent = open ? '显示答案' : '隐藏答案';
+    });
+})();
+</script>
 </body>
 </html>
