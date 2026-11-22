@@ -284,8 +284,8 @@ Transformer编码器（3层×8头注意力）：
         <section class="widget" aria-labelledby="ncoHead">
             <h3 id="ncoHead">动手：拆解 REINFORCE with Baseline 的梯度</h3>
             <p>策略梯度公式里每一项都有明确含义。先想想为什么要有 baseline，再展开对照。</p>
-            <button type="button" id="ncoBtn" aria-expanded="false" aria-controls="ncoPanel">展开逐项解释</button>
-            <div id="ncoPanel" hidden>
+            <details>
+                <summary>展开逐项解释</summary>
                 <ul>
                     <li><strong>L(π)</strong>：采样解 π 的实际代价（如 TSP 环长）。</li>
                     <li><strong>b(s)</strong>：基准值，用来降低方差。它可以是贪心 rollout 的代价或历史平均值。</li>
@@ -293,7 +293,7 @@ Transformer编码器（3层×8头注意力）：
                     <li><strong>∇log p<sub>θ</sub>(π|s)</strong>：概率对参数的梯度方向，决定“怎么改参数能提高该序列的概率”。</li>
                 </ul>
                 <p>baseline 不影响期望梯度的无偏性（因为 E[b(s)∇log p] = 0），但能显著减小方差，是 NCO 训练能稳定的关键技巧之一。</p>
-            </div>
+            </details>
         </section>
 
         <h2>GNN+传统方法融合</h2>
@@ -428,18 +428,5 @@ Transformer编码器（3层×8头注意力）：
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('ncoBtn');
-    var panel = document.getElementById('ncoPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '展开逐项解释' : '收起逐项解释';
-    });
-})();
-</script>
 </body>
 </html>
