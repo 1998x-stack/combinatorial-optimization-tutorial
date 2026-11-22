@@ -184,8 +184,8 @@ s.t. Ax ≤ b
         <section class="widget" aria-labelledby="lpHead">
             <h3 id="lpHead">验证：最优解真的在顶点上吗？</h3>
             <p>对图 1 的可行域，目标函数是 <strong>z = 3x + 2y</strong>。先自己算几个顶点的 z 值，再展开对照。</p>
-            <button type="button" id="lpBtn" aria-expanded="false" aria-controls="lpPanel">展开顶点目标值</button>
-            <div id="lpPanel" hidden>
+            <details>
+                <summary>展开顶点目标值</summary>
                 <table>
                     <thead><tr><th>顶点 (x, y)</th><th>z = 3x + 2y</th></tr></thead>
                     <tbody>
@@ -197,7 +197,7 @@ s.t. Ax ≤ b
                     </tbody>
                 </table>
                 <p>五个顶点的 z 值中 (4, 1) 最大，且可行域内部或边中点都不会超过它——这正是“线性目标在凸多面体上的最优值一定在顶点取得”的含义。</p>
-            </div>
+            </details>
         </section>
 
         <h2>单纯形法</h2>
@@ -348,18 +348,5 @@ s.t. Aᵀy ≥ c
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('lpBtn');
-    var panel = document.getElementById('lpPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '展开顶点目标值' : '收起顶点目标值';
-    });
-})();
-</script>
 </body>
 </html>
