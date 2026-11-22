@@ -142,13 +142,13 @@
 
         <section class="widget" aria-labelledby="augHead">
             <h3 id="augHead">动手：翻转一条增广路</h3>
-            <p>看上面那条交替路 a ─ b === c ─ d（=== 是匹配边）。点头按钮，看看翻转前后匹配发生了什么变化。</p>
-            <button type="button" id="augBtn" aria-expanded="false" aria-controls="augPanel">翻转增广路</button>
-            <div id="augPanel" hidden>
+            <p>看上面那条交替路 a ─ b === c ─ d（=== 是匹配边）。展开下面的折叠面板，看看翻转前后匹配发生了什么变化。</p>
+            <details>
+                <summary>翻转增广路</summary>
                 <p><strong>翻转前：</strong>M = { b-c }，匹配大小 = 1。</p>
                 <p><strong>翻转后：</strong>匹配边与非匹配边互换，M = { a-b, c-d }，匹配大小 = 2。</p>
                 <p>端点 a 与 d 原本未匹配，翻转后各自获得一条匹配边；内部顶点 b、c 保持被匹配。因为增广路长度总为奇数，翻转后必使匹配数 +1——这就是 Berge 引理中“无增广路则最大”的直观来源。</p>
-            </div>
+            </details>
         </section>
 
         <h2>Hall婚姻定理</h2>
@@ -360,18 +360,5 @@
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('augBtn');
-    var panel = document.getElementById('augPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '翻转增广路' : '还原匹配';
-    });
-})();
-</script>
 </body>
 </html>
