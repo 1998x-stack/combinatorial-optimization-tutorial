@@ -217,16 +217,16 @@ adj[v].push_back(u);  // 无向图</code></pre>
 
         <section class="widget" aria-labelledby="bfsHead">
             <h3 id="bfsHead">动手练：手算 BFS 距离</h3>
-            <p>以图 1 中的图为例，从顶点 A 出发做 BFS。先自己推一遍，再点按钮对答案。</p>
-            <button type="button" id="bfsBtn" aria-expanded="false" aria-controls="bfsPanel">显示答案</button>
-            <div id="bfsPanel" hidden>
+            <p>以图 1 中的图为例，从顶点 A 出发做 BFS。先自己推一遍，再展开下面的折叠面板对答案。</p>
+            <details>
+                <summary>显示答案</summary>
                 <ul>
                     <li>dist(A) = 0（起点）</li>
                     <li>dist(B) = 1、dist(C) = 1、dist(D) = 1（A 的直接邻居）</li>
                     <li>dist(E) = 2（E 只与 D 相邻，经 D 到达）</li>
                 </ul>
                 <p>注意：B、C 之间存在边，但它不改变任一顶点的 BFS 距离——BFS 只关心“最少边数”。</p>
-            </div>
+            </details>
         </section>
 
         <h2>树与生成树</h2>
@@ -406,18 +406,5 @@ Tarjan(u):
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('bfsBtn');
-    var panel = document.getElementById('bfsPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '显示答案' : '隐藏答案';
-    });
-})();
-</script>
 </body>
 </html>
