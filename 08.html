@@ -151,11 +151,11 @@
         <section class="widget" aria-labelledby="mfHead">
             <h3 id="mfHead">动手：为图 1 找一个最小割</h3>
             <p>把顶点分成两部分 S（含 s）和 T（含 t），割容量是 S 指向 T 的边的容量之和。先找一个尽可能小的划分，再展开对照。</p>
-            <button type="button" id="mfBtn" aria-expanded="false" aria-controls="mfPanel">展开最小割</button>
-            <div id="mfPanel" hidden>
+            <details>
+                <summary>展开最小割</summary>
                 <p>取 S = {s, a}，T = {b, t}。从 S 指向 T 的边只有两条：s→b（容量 5）与 a→t（容量 5），割容量 = 5 + 5 = <strong>10</strong>。</p>
                 <p>它恰好等于图 1 的最大流值 10——这不是巧合，而是最大流最小割定理：最大流的值等于最小割的容量。当残差网络中不再存在增广路时，从 s 出发可达的顶点就形成了最小割的 S 侧。</p>
-            </div>
+            </details>
         </section>
 
         <h2>残差网络与增广路</h2>
@@ -368,18 +368,5 @@
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('mfBtn');
-    var panel = document.getElementById('mfPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '展开最小割' : '收起最小割';
-    });
-})();
-</script>
 </body>
 </html>
