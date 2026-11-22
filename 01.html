@@ -5,11 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第1章 什么是组合优化</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html" class="active">第1章 什么是组合优化</a></li>
@@ -41,10 +52,12 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 1 章 · 组合优化入门</p>
+        <h1>什么是组合优化</h1>
 
-        <h2>开篇：一次"失败"的快递配送</h2>
+        <h2>开篇：一次“失败”的快递配送</h2>
 
         <p>大家好，我是你们的讲师。在正式进入组合优化的世界之前，我想先讲一个让我印象深刻的真实案例。</p>
 
@@ -77,7 +90,33 @@ v : S → ℝ  = 目标函数（给每个可行解一个实数值）
 
 目标：找到 x* ∈ S，使得 v(x*) = opt { v(x) | x ∈ S }</code></pre>
 
-        <p>拆解一下这四个要素：</p>
+        <figure>
+  <svg viewBox="0 0 680 300" role="img" aria-labelledby="c1Title c1Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c1Title">组合优化四要素：候选解、可行解、优化方向与目标函数</title>
+    <desc id="c1Desc">外层椭圆是候选解集合 C，内层椭圆是满足约束的可行解集合 S。目标函数 v 把每个可行解映射为实数；优化方向 opt 在 S 上取最小或最大，使目标值最优的解 x* 位于 S 中。</desc>
+    <ellipse cx="250" cy="150" rx="205" ry="118" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/>
+    <ellipse cx="250" cy="150" rx="120" ry="76" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="250" y="52" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="16" font-weight="700" fill="#5b21b6">C：候选解集合</text>
+    <text x="250" y="150" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="15" font-weight="700" fill="#166534">S：可行解</text>
+    <text x="250" y="172" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#4b5563">满足全部约束</text>
+    <circle cx="330" cy="118" r="7" fill="#dc2626"/>
+    <text x="342" y="114" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" font-weight="700" fill="#b91c1c">x*（最优解）</text>
+    <circle cx="150" cy="212" r="6" fill="#9ca3af"/>
+    <text x="160" y="217" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280">被约束排除的候选</text>
+    <defs><marker id="c1Arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0f766e"/></marker></defs>
+    <line x1="372" y1="118" x2="470" y2="118" stroke="#0f766e" stroke-width="2" marker-end="url(#c1Arrow)"/>
+    <text x="421" y="108" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="13" fill="#0f766e">v（目标函数）</text>
+    <rect x="482" y="86" width="176" height="64" rx="12" fill="#ecfeff" stroke="#0891b2" stroke-width="1.5"/>
+    <text x="570" y="114" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" font-weight="700" fill="#155e75">实数目标值</text>
+    <text x="570" y="136" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#164e63">opt ∈ {min, max}</text>
+  </svg>
+  <figcaption>图 1：组合优化四元组 ⟨C, S, opt, v⟩ 的集合关系（教学示意图）。候选解集合 C 包含全部组合，可行解集合 S 是其中满足约束的子集，目标函数 v 把可行解映射为实数，优化方向 opt 在 S 上取最优。</figcaption>
+</figure>
+
+<p>在集合上，可行解集合 S 是候选解集合 C 的子集，目标函数在 S 上求极值。可用 MathML 写成：
+<span class="math-scroll"><math display="inline" aria-label="最优解 x star 属于 S，且 v(x star) 等于在 S 上对 v(x) 取 opt 的极值"><mi>x</mi><mo>∗</mo><mo>∈</mo><mi>S</mi><mo>,</mo><mspace width="0.4em"></mspace><mi>v</mi><mo>(</mo><msup><mi>x</mi><mo>∗</mo></msup><mo>)</mo><mo>=</mo><munder><mo>opt</mo><mrow><mi>x</mi><mo>∈</mo><mi>S</mi></mrow></munder><mi>v</mi><mo>(</mo><mi>x</mi><mo>)</mo></math></span>。这里 <math display="inline" aria-label="v 是从 S 到实数的映射"><mi>v</mi><mo>:</mo><mi>S</mi><mo>→</mo><mi mathvariant="double-struck">R</mi></math>。</p>
+
+<p>拆解一下这四个要素：</p>
 
         <ul>
             <li><strong>C（候选解集合）</strong>——所有可能的组合方式。在配送问题中，C是30个订单的所有可能排列，数量是30!。</li>
@@ -89,6 +128,15 @@ v : S → ℝ  = 目标函数（给每个可行解一个实数值）
         <div class="tip">
             <strong>小贴士：</strong>C和S的区别非常关键。很多新手犯的错误是把C当成了S——他们找到某个候选解就开始欢呼，却没检查它是否真的满足约束。在芯片布局问题中，一个把所有元器件紧密排在一起的"解"可能在面积上最优，但完全违反了电气间距约束，根本不是一个可行解。永远记住：先验证可行性，再比较优劣。
         </div>
+
+        <section class="widget" aria-labelledby="expHead">
+            <h3 id="expHead">动手算一算：30 个订单到底有多少种走法？</h3>
+            <p>先不看面板，猜一个数量级：30 个订单的所有排列数是 <strong>30!</strong>。点一下按钮，把估算过程展开。</p>
+            <button type="button" id="expBtn" aria-expanded="false" aria-controls="expPanel">展开估算过程</button>
+            <div id="expPanel" hidden>
+                <p>30! ≈ 2.65×10<sup>32</sup>（与本节开头引用的量级一致）。假设每秒枚举 10<sup>9</sup> 条路线，需 2.65×10<sup>23</sup> 秒，换算后约 8.4×10<sup>15</sup> 年——约为宇宙年龄（约 1.38×10<sup>10</sup> 年）的 6×10<sup>5</sup> 倍。这是教学估算（按“每秒十亿条”的理想假设），用来说明穷举不可行，而非精确测量。</p>
+            </div>
+        </section>
 
         <h3>离散优化 vs 连续优化</h3>
 
@@ -282,13 +330,25 @@ v : S → ℝ  = 目标函数（给每个可行解一个实数值）
 
         <p>做好准备了吗？我们下一章见。</p>
 
-        <div class="footer-nav">
-            <a href="javascript:void(0)">← 上一章</a>
+        <div class="footer-nav" id="nav-foot">
             <a href="index.html">📖 返回目录</a>
             <a href="02.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('expBtn');
+    var panel = document.getElementById('expPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        panel.hidden = open;
+        btn.textContent = open ? '展开估算过程' : '收起估算过程';
+    });
+})();
+</script>
 </body>
 </html>

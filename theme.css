@@ -211,3 +211,18 @@ math[display="block"] { margin: 4px 0; }
     figure, table, pre { break-inside: avoid; }
     a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #555; }
 }
+
+/* === Interactive widgets === */
+.widget {
+    background: #f0fdfa; border: 1px solid #99f6e4; border-left: 6px solid #0d9488;
+    border-radius: 16px; padding: 16px 18px; margin: 20px 0;
+}
+.widget h3 { margin-top: 0; color: #115e59; }
+.widget button {
+    font: inherit; font-weight: 600; cursor: pointer; color: #fff;
+    background: #0d9488; border: none; border-radius: 40px; padding: 8px 20px;
+    transition: background 0.15s ease;
+}
+.widget button:hover { background: #0f766e; }
+.widget [id$="Panel"] { margin-top: 12px; }
+.widget [hidden] { display: none; }
