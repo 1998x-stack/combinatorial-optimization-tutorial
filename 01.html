@@ -131,11 +131,11 @@ v : S → ℝ  = 目标函数（给每个可行解一个实数值）
 
         <section class="widget" aria-labelledby="expHead">
             <h3 id="expHead">动手算一算：30 个订单到底有多少种走法？</h3>
-            <p>先不看面板，猜一个数量级：30 个订单的所有排列数是 <strong>30!</strong>。点一下按钮，把估算过程展开。</p>
-            <button type="button" id="expBtn" aria-expanded="false" aria-controls="expPanel">展开估算过程</button>
-            <div id="expPanel" hidden>
+            <p>先不看面板，猜一个数量级：30 个订单的所有排列数是 <strong>30!</strong>。先自己估算，再展开下面的折叠面板对照。</p>
+            <details>
+                <summary>展开估算过程</summary>
                 <p>30! ≈ 2.65×10<sup>32</sup>（与本节开头引用的量级一致）。假设每秒枚举 10<sup>9</sup> 条路线，需 2.65×10<sup>23</sup> 秒，换算后约 8.4×10<sup>15</sup> 年——约为宇宙年龄（约 1.38×10<sup>10</sup> 年）的 6×10<sup>5</sup> 倍。这是教学估算（按“每秒十亿条”的理想假设），用来说明穷举不可行，而非精确测量。</p>
-            </div>
+            </details>
         </section>
 
         <h3>离散优化 vs 连续优化</h3>
@@ -337,18 +337,5 @@ v : S → ℝ  = 目标函数（给每个可行解一个实数值）
     </main>
 </div>
 </div>
-<script>
-(function () {
-    var btn = document.getElementById('expBtn');
-    var panel = document.getElementById('expPanel');
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        panel.hidden = open;
-        btn.textContent = open ? '展开估算过程' : '收起估算过程';
-    });
-})();
-</script>
 </body>
 </html>
