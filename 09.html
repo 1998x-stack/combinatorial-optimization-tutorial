@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第9章 最小割与应用</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 9 章 · 最小割与应用</p>
+        <h1>最小割与应用</h1>
 
         <h2>开篇：一张照片引发的思考</h2>
 
@@ -63,6 +77,46 @@
         <p>上一章讨论的 s-t 最小割需要指定源点 s 和汇点 t。但如果我们不指定呢？<strong>全局最小割（Global Minimum Cut）</strong>问题问的是：在无向图中，找到一个边集，移除后图不再连通，且这个边集的总容量最小。注意这里不需要指定 s 和 t——我们找的是"最脆弱的连接处"。</p>
 
         <p>一个简单的想法是：固定一个顶点 v，对其他每个顶点 u 求 s=v, t=u 的最小割，取最小值。这需要 V-1 次最大流计算。如果用 Dinic 每次 O(V²·E)，总复杂度 O(V³·E)，对于大规模图太慢了。</p>
+
+        <figure>
+  <svg viewBox="0 0 540 330" role="img" aria-labelledby="c9Title c9Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c9Title">一个 s-t 割的划分与割容量</title>
+    <desc id="c9Desc">有向图中，虚线把顶点划分为 S={s, a} 与 T={b, t}。从 S 跨到 T 的三条边 s→b、a→b、a→t 构成这个割，容量分别为 2、1、2，合计 5。</desc>
+    <defs><marker id="c9Arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#7c3aed"/></marker>
+      <marker id="c9ArrowR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/></marker></defs>
+    <line x1="268" y1="24" x2="268" y2="308" stroke="#94a3b8" stroke-width="2" stroke-dasharray="7 6"/>
+    <g stroke="#7c3aed" stroke-width="2" fill="none">
+      <line x1="96" y1="168" x2="182" y2="92" marker-end="url(#c9Arrow)"/>
+      <line x1="336" y1="252" x2="364" y2="176" marker-end="url(#c9Arrow)"/>
+    </g>
+    <g stroke="#dc2626" stroke-width="2.6" fill="none">
+      <line x1="98" y1="178" x2="292" y2="248" marker-end="url(#c9ArrowR)"/>
+      <line x1="216" y1="94" x2="292" y2="246" marker-end="url(#c9ArrowR)"/>
+      <line x1="218" y1="86" x2="362" y2="140" marker-end="url(#c9ArrowR)"/>
+    </g>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="11">
+      <text x="150" y="130" fill="#6d28d9">3</text>
+      <text x="352" y="222" fill="#6d28d9">3</text>
+      <text x="175" y="228" fill="#b91c1c">2</text>
+      <text x="258" y="158" fill="#b91c1c">1</text>
+      <text x="300" y="102" fill="#b91c1c">2</text>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="15" font-weight="700" text-anchor="middle">
+      <circle cx="80" cy="170" r="20" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="80" y="175" fill="#0369a1">s</text>
+      <circle cx="200" cy="80" r="20" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="200" y="85" fill="#0369a1">a</text>
+      <circle cx="320" cy="262" r="20" fill="#ffe4e6" stroke="#e11d48" stroke-width="2"/><text x="320" y="267" fill="#be123c">b</text>
+      <circle cx="380" cy="150" r="20" fill="#ffe4e6" stroke="#e11d48" stroke-width="2"/><text x="380" y="155" fill="#be123c">t</text>
+    </g>
+    <text x="30" y="308" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#0369a1">S = {s, a}</text>
+    <text x="440" y="308" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#be123c">T = {b, t}</text>
+    <text x="270" y="20" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" font-weight="700" fill="#b91c1c">割容量 = 2 + 1 + 2 = 5</text>
+  </svg>
+  <figcaption>图 1：一个 s-t 割的划分（教学示意）。虚线把顶点分成 S 与 T 两集；割容量只计从 S 指向 T 的边（红色）的容量之和，S 内部与 T 内部的边不计入。</figcaption>
+</figure>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="割容量的定义">
+            <math display="block" aria-label="割容量等于所有从 S 中顶点指向 T 中顶点的边的容量之和"><mi>c</mi><mo>(</mo><mi>S</mi><mo>,</mo><mi>T</mi><mo>)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>u</mi><mo>∈</mo><mi>S</mi><mo>,</mo><mspace width="0.2em"></mspace><mi>v</mi><mo>∈</mo><mi>T</mi></mrow></munder><mi>c</mi><mo>(</mo><mi>u</mi><mo>,</mo><mi>v</mi><mo>)</mo></math>
+        </div>
 
         <h3>Stoer-Wagner算法</h3>
 
@@ -184,6 +238,20 @@
             <strong>小心无穷大！</strong>在实际建模中，"无穷大"容量不能设置得真的无穷大——计算机会溢出。正确做法是设为一个足够大的数，例如所有正收益之和+1。我用 Gurobi 做这类建模时，遇到过因为把 ∞ 设得太大（10¹⁰）导致数值问题的案例。建议用 10⁶ 或所有容量和+1。在最小割中，"足够大"意味着"比任何有限割的容量都大"，这样算法永远不会选择切断它。
         </div>
 
+        <section class="widget" aria-labelledby="psHead">
+            <h3 id="psHead">动手练：项目选择的最优集合</h3>
+            <p>三个项目：P1（收益 +10，无依赖）、P2（收益 +4，依赖“选 P2 必须选 C”）、C（成本 6）。先自己找一个收益最大的可行子集，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>选 {P1}：收益 10，不碰依赖约束。</li>
+                    <li>选 {P1, P2, C}：收益 10 + 4 − 6 = 8，反而更差。</li>
+                    <li>选 {P2, C}：收益 4 − 6 = −2。</li>
+                </ul>
+                <p>最优是 {P1}，总收益 10。用最小割的语言：宁可切断 s→P2（放弃 +4），也不愿承担 C 的成本，所以 P2 被划到 T 侧。</p>
+            </details>
+        </section>
+
         <h3>图像分割：Graph Cut</h3>
 
         <p>这就是开篇提到的应用。给定一张图片，每个像素要么是"前景"（例如一个人），要么是"背景"。如何用最小割来分割？</p>
@@ -268,7 +336,7 @@
             <a href="index.html">📖 返回目录</a>
             <a href="10.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
