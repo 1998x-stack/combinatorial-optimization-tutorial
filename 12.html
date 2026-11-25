@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第12章 整数线性规划</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 12 章 · 整数线性规划</p>
+        <h1>整数线性规划</h1>
 
         <h2>开篇：一个让CFO差点辞职的LP解</h2>
 
@@ -86,6 +100,10 @@ s.t. Ax ≤ b
         <h3>整数间隙（Integrality Gap）</h3>
 
         <p>对于给定的 ILP 问题，<strong>整数间隙</strong>定义为：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="整数间隙的定义">
+            <math display="block" aria-label="整数间隙等于对所有实例取整数最优值与线性松弛最优值之比的最大值"><mtext>Gap</mtext><mo>=</mo><munder><mo>max</mo><mrow><mi>I</mi></mrow></munder><mfrac><msub><mtext>OPT</mtext><mtext>ILP</mtext></msub><msub><mtext>OPT</mtext><mtext>LP</mtext></msub></mfrac></math>
+        </div>
 
         <pre><code>Integrality Gap = max_{instance I} ( ILP_opt(I) / LP_relax_opt(I) )
                  （对于最小化问题）</code></pre>
@@ -132,6 +150,34 @@ s.t. Ax ≤ b
         <div class="warning">
             <strong>四舍五入LP解：为什么它是个坏主意</strong>——LP 的最优解通常位于多面体的一个顶点（极点）上。当你四舍五入时，你离开了这个顶点。四舍五入后的点可能：① 不再是可行解（违反约束）；② 即使可行，也可能非常次优。正确的做法要么是使用整数规划专用解法（分支定界、割平面），要么是设计有理论保证的近似算法。绝对不要拍脑袋做四舍五入——这会让你的 CFO 血压飙升。
         </div>
+
+        <figure>
+  <svg viewBox="0 0 380 340" role="img" aria-labelledby="c12Title c12Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c12Title">LP 松弛的分数最优解与整数包</title>
+    <desc id="c12Desc">在约束 x+2y 不超过 5、2x+y 不超过 5 且 x、y 非负的可行域（浅紫四边形）内，目标 x+y 的 LP 最优在分数顶点 (5/3, 5/3) 取到约 3.33；整数点中最大值为 3，在 (1,2) 或 (2,1) 取到。红色虚线 x+y ≤ 3 是一条 Gomory 割。</desc>
+    <line x1="60" y1="290" x2="335" y2="290" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="60" y1="290" x2="60" y2="40" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="328" y="308" font-family="system-ui,sans-serif" font-size="13" fill="#475569">x</text>
+    <text x="42" y="50" font-family="system-ui,sans-serif" font-size="13" fill="#475569">y</text>
+    <polygon points="60,290 197,290 152,198 60,153" fill="#ede9fe" fill-opacity="0.7" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="60" y1="153" x2="335" y2="290" stroke="#7c3aed" stroke-width="1.4"/>
+    <line x1="60" y1="15" x2="197" y2="290" stroke="#7c3aed" stroke-width="1.4"/>
+    <text x="200" y="215" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6d28d9">x + 2y ≤ 5</text>
+    <text x="90" y="45" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6d28d9">2x + y ≤ 5</text>
+    <line x1="60" y1="125" x2="225" y2="290" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="7 6"/>
+    <text x="150" y="110" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" font-weight="700" fill="#b91c1c">割平面 x + y ≤ 3</text>
+    <g fill="#0369a1">
+      <circle cx="60" cy="290" r="4"/><circle cx="115" cy="290" r="4"/><circle cx="170" cy="290" r="4"/>
+      <circle cx="60" cy="235" r="4"/><circle cx="115" cy="235" r="4"/><circle cx="60" cy="180" r="4"/>
+      <circle cx="115" cy="180" r="4"/><circle cx="170" cy="235" r="4"/>
+    </g>
+    <circle cx="152" cy="198" r="6" fill="#dc2626"/>
+    <text x="162" y="196" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#b91c1c">LP 最优 (5/3, 5/3)</text>
+    <circle cx="115" cy="180" r="7" fill="#059669"/><circle cx="170" cy="235" r="7" fill="#059669"/>
+    <text x="176" y="232" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" font-weight="700" fill="#047857">整数最优 (2,1) / (1,2)</text>
+  </svg>
+  <figcaption>图 1：LP 松弛与整数解的关系（教学示意）。LP 在分数顶点 (5/3, 5/3) 取到约 3.33，而整数最优只有 3；红色虚线 x + y ≤ 3 是一条割平面（Gomory 割），它切掉分数顶点却不切掉任何整数点。</figcaption>
+</figure>
 
         <h2>全幺模矩阵</h2>
 
@@ -302,6 +348,20 @@ s.t. Ax ≤ b
 
         <p>1988年，Schrijver 证明了 TSP 的 CG 秩至少为 Ω(√n)，这意味着对 TSP 来说，纯割平面法需要指数多个 CG 层才能收敛。这解释了为什么现代 MIP 求解器不使用纯割平面法，而是结合了分支和切割。</p>
 
+        <section class="widget" aria-labelledby="igHead">
+            <h3 id="igHead">动手练：直接取整 LP 解会怎样？</h3>
+            <p>考虑 ILP：max 3x + 2y，s.t. x + y ≤ 1.9，且 x、y 为非负整数。先自己求出 LP 最优与整数最优，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>LP 最优：在顶点 (1.9, 0) 取到 3×1.9 = 5.7。</li>
+                    <li>整数最优：在 (1, 0) 取到 3。</li>
+                    <li>取整失败：把 1.9 向上取整得 (2, 0)，违反 x + y ≤ 1.9；向下取整得 (1, 0)，值只有 3，约为 LP 最优值的一半。</li>
+                </ul>
+                <p>结论：LP 解只能作为提示或下界，不能直接取整当作答案。要得到整数最优，需要分支定界或割平面（本章后半部分）。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -320,7 +380,7 @@ s.t. Ax ≤ b
             <a href="index.html">📖 返回目录</a>
             <a href="13.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
