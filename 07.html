@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第7章 分支定界</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 7 章 · 分支定界</p>
+        <h1>分支定界</h1>
 
         <h2>开篇：一座迷宫和一把剪刀</h2>
 
@@ -113,6 +127,45 @@
             <strong>一个常见误解：</strong>很多人以为 B&B 保证找到最优解是因为它"搜索得更聪明"。其实 B&B 在最坏情况下仍然需要检查所有分支——仍然是 O(2ⁿ)。它的实际效率完全取决于<strong>定界的质量</strong>：如果下界很紧（接近真实最优值），剪枝效率就高；如果下界很松（离真实值很远），几乎剪不掉任何分支，B&B 就退化成了穷举。所以 B&B 的"艺术"全在于怎么构造一个好的定界器（Bounder）。
         </div>
 
+        <figure>
+  <svg viewBox="0 0 560 330" role="img" aria-labelledby="c7Title c7Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c7Title">分支定界搜索树与剪枝</title>
+    <desc id="c7Desc">一棵最小化问题的搜索树。根节点松弛下界为 10.0；左子节点下界 11.5，继续分支得到一个整数解 12.0 并更新上界；右下两个节点下界分别 12.4 和 12.7，均大于等于上界 12.0 而被剪枝。</desc>
+    <g stroke="#7c3aed" stroke-width="2" fill="none">
+      <line x1="280" y1="74" x2="180" y2="122"/>
+      <line x1="280" y1="74" x2="400" y2="122"/>
+      <line x1="180" y1="170" x2="110" y2="230"/>
+      <line x1="180" y1="170" x2="270" y2="230"/>
+    </g>
+    <g font-family="system-ui,'PingFang SC',sans-serif" text-anchor="middle">
+      <rect x="215" y="26" width="130" height="48" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+      <text x="280" y="46" font-size="12" font-weight="700" fill="#5b21b6">根：LB = 10.0</text>
+      <text x="280" y="63" font-size="11" fill="#6b7280">x = (2.5, 4.5) 非整数</text>
+      <rect x="115" y="122" width="130" height="48" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+      <text x="180" y="142" font-size="12" font-weight="700" fill="#0369a1">x₁ ≤ 2：LB = 11.5</text>
+      <text x="180" y="159" font-size="11" fill="#6b7280">继续分支</text>
+      <rect x="335" y="122" width="130" height="48" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="400" y="142" font-size="12" font-weight="700" fill="#b91c1c">x₁ ≥ 3：LB = 12.7</text>
+      <text x="400" y="159" font-size="11" fill="#b91c1c">剪枝：LB ≥ UB</text>
+      <rect x="45" y="230" width="130" height="52" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+      <text x="110" y="250" font-size="12" font-weight="700" fill="#047857">x₂ ≤ 4：整数解</text>
+      <text x="110" y="267" font-size="11" fill="#047857">值 = 12.0 → UB</text>
+      <rect x="205" y="230" width="130" height="52" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="270" y="250" font-size="12" font-weight="700" fill="#b91c1c">x₂ ≥ 5：LB = 12.4</text>
+      <text x="270" y="267" font-size="11" fill="#b91c1c">剪枝：LB ≥ UB</text>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="12" fill="#059669">
+      <text x="360" y="300">✔ 找到整数解，更新上界</text>
+      <text x="60" y="310">✔ 最终最优值 = 12.0</text>
+    </g>
+    <g stroke="#dc2626" stroke-width="2">
+      <line x1="372" y1="188" x2="428" y2="188"/><line x1="388" y1="182" x2="402" y2="194"/><line x1="402" y1="182" x2="388" y2="194"/>
+      <line x1="242" y1="296" x2="298" y2="296"/><line x1="258" y1="290" x2="272" y2="302"/><line x1="272" y1="290" x2="258" y2="302"/>
+    </g>
+  </svg>
+  <figcaption>图 1：分支定界搜索树与剪枝（教学示意）。对最小化问题，子节点的下界若 ≥ 当前全局上界（此处 UB = 12.0）就可整棵剪掉；红叉标出被剪的分支，绿色标出整数可行解与最终最优值。</figcaption>
+</figure>
+
         <h2>下界的构造</h2>
 
         <p>我们来深入探讨三种常用的下界构造方法，这是 B&B 成功的"秘密武器"。</p>
@@ -120,6 +173,11 @@
         <h3>LP 松弛</h3>
 
         <p>对于整数线性规划（ILP），最简单的下界就是去掉整数约束，求解对应的 LP（LP Relaxation）。LP 的可行域包含了 ILP 的所有可行解，所以 LP 最优值 ≤ ILP 最优值（对于最小化问题）。LP 松弛的质量取决于整数约束的"紧密度"——有些问题的 LP 松弛解天然就是整数（如网络流问题），这意味着下界就是最优解；而另一些问题（如 TSP）的 LP 松弛解非常"松"，需要额外技术来加强。</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="下界与剪枝条件">
+            <math display="block" aria-label="线性规划松弛的最优值小于等于整数规划的最优值"><msub><mi>z</mi><mtext>LP</mtext></msub><mo>≤</mo><msub><mi>z</mi><mtext>ILP</mtext></msub></math>
+            <math display="block" aria-label="当节点的下界大于等于全局上界时剪枝"><mi>LB</mi><mo>(</mo><mtext>node</mtext><mo>)</mo><mo>≥</mo><mi>UB</mi><mspace width="0.4em"></mspace><mo>⇒</mo><mspace width="0.4em"></mspace><mtext>剪枝</mtext></math>
+        </div>
 
         <pre><code>// 分支定界算法框架（最小化问题）
 function BranchAndBound(problem):
@@ -276,6 +334,10 @@ s.t. x ∈ X
 
         <p>当 UB = LB 时，B&B 搜索完成，找到了全局最优解。但实践中，求解器往往不等 UB = LB 就提前终止——通过 <strong>Optimality Gap</strong> 来判断：</p>
 
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="最优性间隙公式">
+            <math display="block" aria-label="最优性间隙等于上界减下界再除以上界，以百分比表示"><mtext>Gap</mtext><mo>=</mo><mfrac><mrow><mi>UB</mi><mo>−</mo><mi>LB</mi></mrow><mi>UB</mi></mfrac><mo>×</mo><mn>100</mn><mo>%</mo></math>
+        </div>
+
         <pre><code>Optimality Gap = (UB - LB) / UB × 100%
 
 Gurobi / CPLEX 求解器输出示例：
@@ -311,6 +373,15 @@ Optimal solution found (gap = 0.00%)</code></pre>
             (3) 设置时间限制和节点限制作为"安全阀"，避免求解器无限运行。
         </div>
 
+        <section class="widget" aria-labelledby="gapHead">
+            <h3 id="gapHead">动手练：算一算 Gap</h3>
+            <p>某最小化问题当前找到的最佳可行解 UB = 100，活动节点的最小下界 LB = 92。先自己估算最优性间隙，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <p>Gap = (100 − 92) / 100 × 100% = 8%。也就是说，真实最优值落在区间 [92, 100] 内，当前解最多比最优差 8%。若设置了 MIPGap = 10%，此时就可以提前终止并接受这个解。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -332,7 +403,7 @@ Optimal solution found (gap = 0.00%)</code></pre>
             <a href="index.html">📖 返回目录</a>
             <a href="08.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
