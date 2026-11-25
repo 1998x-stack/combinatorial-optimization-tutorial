@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第11章 一般图匹配</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 11 章 · 一般图匹配</p>
+        <h1>一般图匹配</h1>
 
         <h2>开篇：疫情中的社交网络</h2>
 
@@ -97,6 +111,42 @@ u₂───u₃
         <h3>花和收缩</h3>
 
         <p>一个<strong>花</strong>是图中的一个奇环，满足：环上有 2k+1 个顶点，其中恰好 k 条边属于当前匹配 M，且这些匹配边在环上交替排列，环上有唯一一个"未匹配"的顶点（称为<strong>花茎，base</strong>）。</p>
+
+        <figure>
+  <svg viewBox="0 0 600 320" role="img" aria-labelledby="c11Title c11Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c11Title">花（奇环）及其收缩</title>
+    <desc id="c11Desc">左图：根顶点 r 通过一条非匹配边连接到花茎 v0，v0 所属的 5 个顶点的奇环上有两条匹配边（v1-v2 与 v3-v4）和三条非匹配边。右图：把整个奇环收缩为一个虚拟顶点 B，外部边 r-B 保留。</desc>
+    <g stroke="#64748b" stroke-width="1.6" fill="none">
+      <line x1="170" y1="42" x2="170" y2="74"/>
+      <line x1="170" y1="96" x2="252" y2="136"/>
+      <line x1="228" y1="252" x2="122" y2="252"/>
+      <line x1="88" y1="136" x2="170" y2="96"/>
+    </g>
+    <g stroke="#7c3aed" stroke-width="4" fill="none">
+      <line x1="256" y1="147" x2="223" y2="248"/>
+      <line x1="117" y1="248" x2="84" y2="147"/>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="13" font-weight="700" text-anchor="middle">
+      <circle cx="170" cy="30" r="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="170" y="35" fill="#0369a1">r</text>
+      <circle cx="170" cy="85" r="18" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="170" y="90" fill="#b45309">v0</text>
+      <circle cx="256" cy="147" r="16" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="256" y="152" fill="#6d28d9">v1</text>
+      <circle cx="223" cy="248" r="16" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="223" y="253" fill="#6d28d9">v2</text>
+      <circle cx="117" cy="248" r="16" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="117" y="253" fill="#6d28d9">v3</text>
+      <circle cx="84" cy="147" r="16" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="84" y="152" fill="#6d28d9">v4</text>
+    </g>
+    <text x="170" y="312" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280">奇环（5 个顶点）+ 花茎 v0</text>
+    <path d="M360 170 L400 170" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#c11Arrow)"/>
+    <defs><marker id="c11Arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker></defs>
+    <text x="380" y="158" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#475569">收缩</text>
+    <line x1="450" y1="42" x2="450" y2="108" stroke="#64748b" stroke-width="1.6"/>
+    <circle cx="450" cy="30" r="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="450" y="35" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#0369a1">r</text>
+    <circle cx="450" cy="180" r="62" fill="#ede9fe" fill-opacity="0.7" stroke="#7c3aed" stroke-width="2.5"/>
+    <text x="450" y="186" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="#6d28d9">B</text>
+    <text x="450" y="312" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#6b7280">花收缩为一个虚拟顶点</text>
+  </svg>
+  <figcaption>图 1：Edmonds 花算法的“花”与“收缩”（教学示意）。粗紫线为匹配边、细灰线为非匹配边；花茎 v0 是环上唯一未（在环内）匹配的顶点。收缩后原图有增广路当且仅当收缩图有增广路。</figcaption>
+</figure>
 
         <pre><code>花的结构（M = {a-b, c-d, e-f}，用 === 表示匹配边）：
 
@@ -189,6 +239,10 @@ M = {b-c, d-e}，a 是未匹配的花茎。</code></pre>
 
         <p>设 G = (V, E) 是一个图，ν(G) 是最大匹配大小。<strong>Tutte-Berge 公式</strong>说：</p>
 
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Tutte-Berge 公式">
+            <math display="block" aria-label="最大匹配大小等于二分之一乘以在 U 取遍 V 的子集时，顶点数加 U 的大小减奇分量个数的最小值"><mi>ν</mi><mo>(</mo><mi>G</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><munder><mo>min</mo><mrow><mi>U</mi><mo>⊆</mo><mi>V</mi></mrow></munder><mrow><mo>(</mo><mo>|</mo><mi>V</mi><mo>|</mo><mo>+</mo><mo>|</mo><mi>U</mi><mo>|</mo><mo>−</mo><mi>o</mi><mo>(</mo><mi>G</mi><mo>−</mo><mi>U</mi><mo>)</mo><mo>)</mo></mrow></math>
+        </div>
+
         <pre><code>ν(G) = ½ · min_{U ⊆ V} ( |V| - odd(G \ U) + |U| )
 
 其中 odd(G \ U) 是从 G 中移除 U 后，得到的连通分量中
@@ -203,6 +257,15 @@ M = {b-c, d-e}，a 是未匹配的花茎。</code></pre>
         <div class="highlight">
             <strong>公式背后的直觉：</strong>为什么需要删除 U？假设图中有"孤立的"奇数个顶点——它们无法内部两两配对，必然需要一个外部顶点来"吸收"它们。U 就是这些"外部顶点"的候选集。如果删除 U 后剩下太多奇数分量（> |U|），每个奇数分量需要至少一个 U 中的顶点来配对——但 U 的顶点不够用了，于是完美匹配不可能存在。Tutte-Berge 公式告诉我们，最大匹配大小恰好是"全体顶点数减去这个最小值的一半"。
         </div>
+
+        <section class="widget" aria-labelledby="tbHead">
+            <h3 id="tbHead">动手练：用 Tutte-Berge 算 5 环的匹配</h3>
+            <p>设 G 是一个由 5 个顶点构成的环（C₅）。先自己判断它的最大匹配有多大，再用公式验证。</p>
+            <details>
+                <summary>显示答案</summary>
+                <p>最大匹配为 2。取 U = ∅ 代入：½(|V| + |U| − o(G−U)) = ½(5 + 0 − 1) = 2，其中 o(G) = 1（整个环是一个奇分量）。由于 5 环不可能有完美匹配（顶点数为奇），2 就是最大值。</p>
+            </details>
+        </section>
 
         <h2>匹配多面体</h2>
 
@@ -300,7 +363,7 @@ LP 松弛给出了太宽松的界。</code></pre>
             <a href="index.html">📖 返回目录</a>
             <a href="12.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
