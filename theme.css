@@ -189,6 +189,7 @@ figcaption { font-size: 0.86rem; color: #5b6b7b; line-height: 1.6; margin-top: 1
 
 /* === Math (MathML) scroll regions === */
 .math-scroll, [data-math-scroll] {
+    display: inline-block; vertical-align: middle;
     overflow-x: auto; padding: 4px 2px; max-width: 100%;
 }
 math { font-size: 1.05em; }

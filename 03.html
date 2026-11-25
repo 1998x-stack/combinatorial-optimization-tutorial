@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第3章 计算复杂性</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 3 章 · 计算复杂性入门</p>
+        <h1>计算复杂性</h1>
 
         <h2>开篇：一个让服务器烧掉的夜晚</h2>
 
@@ -61,6 +75,14 @@
         <h3>大O记号</h3>
 
         <p><strong>大O记号（Big-O Notation）</strong>是用来描述算法"增长速度"的工具。我们说一个算法的时间复杂度是 O(f(n))，意思是当输入规模 n 足够大时，运行时间的上界不会超过 f(n) 的常数倍。</p>
+
+        <p>用数学符号写成：对于某个常数 c 和起点 n₀，</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="大 O 记号的形式化定义">
+            <math display="block" aria-label="f(n) = O(g(n)) 当且仅当存在常数 c 和 n0，使得对所有大于等于 n0 的 n，都有 f(n) 小于等于 c 乘以 g(n)"><mi>f</mi><mo>(</mo><mi>n</mi><mo>)</mo><mo>=</mo><mi>O</mi><mo>(</mo><mi>g</mi><mo>(</mo><mi>n</mi><mo>)</mo><mo>)</mo><mo>⇔</mo><mi>∃</mi><mi>c</mi><mo>&gt;</mo><mn>0</mn><mo>,</mo><msub><mi>n</mi><mn>0</mn></msub><mo>:</mo><mo>∀</mo><mi>n</mi><mo>≥</mo><msub><mi>n</mi><mn>0</mn></msub><mo>,</mo><mspace width="0.3em"></mspace><mi>f</mi><mo>(</mo><mi>n</mi><mo>)</mo><mo>≤</mo><mi>c</mi><mo>·</mo><mi>g</mi><mo>(</mo><mi>n</mi><mo>)</mo></math>
+        </div>
+
+        <p>这里的常数 <math display="inline" aria-label="常数 c"><mi>c</mi></math> 与 <math display="inline" aria-label="起点 n0"><msub><mi>n</mi><mn>0</mn></msub></math> 都不依赖于 n，所以我们关心的是增长的“形状”而不是具体系数。</p>
 
         <p>例如，冒泡排序的时间复杂度是 O(n²)：如果有100个元素，大约需要10,000次比较操作；如果有1,000个元素，需要1,000,000次——n 翻10倍，时间翻了100倍。</p>
 
@@ -185,16 +207,31 @@
 
         <p><strong>NP-Hard</strong> 是至少和 NPC 一样难的问题，但不一定属于 NP。许多优化问题（如 TSP 的优化版本）是 NP-Hard 但不属于 NP（因为优化问题的输出是一个数值，不是是/否）。</p>
 
-        <pre><code># 四个问题类的关系图示（非正式描述）
-# P ⊆ NP ⊆ (所有可判定问题)
-# NPC ⊆ NP（NPC是NP中最难的那一撮）
-# NP-Hard ⊇ NPC（NP-Hard至少和NPC一样难）
+        <figure>
+  <svg viewBox="0 0 560 360" role="img" aria-labelledby="c3Title c3Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c3Title">P、NP、NP-Complete 与 NP-Hard 的包含关系</title>
+    <desc id="c3Desc">左侧大集合是 NP-Hard，右侧大集合是 NP。两者的交集是 NP-Complete：既属于 NP，又至少和所有 NP 问题一样难。P 是 NP 的子集，包含多项式时间可解的问题。</desc>
+    <rect x="24" y="40" width="300" height="280" rx="24" fill="#fef3c7" fill-opacity="0.6" stroke="#d97706" stroke-width="2.5" stroke-dasharray="8 6"/>
+    <text x="60" y="72" font-family="system-ui,'PingFang SC',sans-serif" font-size="15" font-weight="700" fill="#b45309">NP-Hard</text>
+    <rect x="236" y="64" width="300" height="236" rx="24" fill="#e0f2fe" fill-opacity="0.65" stroke="#0284c7" stroke-width="2.5"/>
+    <text x="470" y="96" font-family="system-ui,'PingFang SC',sans-serif" font-size="15" font-weight="700" fill="#0369a1">NP</text>
+    <rect x="380" y="120" width="120" height="70" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="440" y="160" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" font-weight="700" fill="#6d28d9">P</text>
+    <text x="278" y="198" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" font-weight="700" fill="#7c3aed">NPC</text>
+    <text x="278" y="218" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#6b7280">= NP ∩ NP-Hard</text>
+    <text x="100" y="300" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#b45309">TSP 优化版、整数规划</text>
+    <text x="430" y="272" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#0369a1">TSP 决策版、SAT</text>
+  </svg>
+  <figcaption>图 1：四个问题类的集合关系（教学示意图）。NPC = NP ∩ NP-Hard；P ⊆ NP；NP-Hard 中的问题未必属于 NP（例如 TSP 与整数规划的优化版本）。</figcaption>
+</figure>
 
-# 具体例子：
-# P:          排序、最短路径、最小生成树
-# NP:         TSP决策版本、SAT、背包决策版本
-# NPC:        SAT、3-SAT、顶点覆盖、哈密顿环
-# NP-Hard:    TSP优化版本、背包优化版本、整数规划</code></pre>
+        <p>下面用文字把这张图读一遍：</p>
+        <ul>
+            <li><strong>P</strong>：排序、最短路径、最小生成树——能在多项式时间内求解。</li>
+            <li><strong>NP</strong>：TSP 决策版本、SAT、背包决策版本——给定候选解能在多项式时间内验证。</li>
+            <li><strong>NPC</strong>：SAT、3-SAT、顶点覆盖、哈密顿环——既属于 NP，又是 NP 中“最难”的一撮。</li>
+            <li><strong>NP-Hard</strong>：TSP 优化版本、背包优化版本、整数规划——至少和 NPC 一样难，但不一定属于 NP。</li>
+        </ul>
 
         <h3>P vs NP：千禧年大奖问题</h3>
 
@@ -238,6 +275,20 @@
         <div class="highlight">
             <strong>归约的实用价值：</strong>归约不只是理论工具。在实际中，如果你遇到一个新问题，能把它归约到一个已知的 NP 难问题，你就立刻获得了两个"超能力"：(1) 你不需要浪费时间找多项式算法了；(2) 你可以直接套用现成的求解器——例如把新问题建模成整数线性规划，用 Gurobi / SCIP 求解。这就是为什么我们花大量时间学习归约和 NP 完全性——不是为了证明自己多聪明，而是为了知道什么时候该"换赛道"。
         </div>
+
+        <section class="widget" aria-labelledby="ccHead">
+            <h3 id="ccHead">动手练：判断问题属于哪个类</h3>
+            <p>把下面每个问题先归入 P / NP / NPC / NP-Hard，再展开对照。注意：NPC 是 NP 的子集，所以一个 NPC 问题同时也是 NP。</p>
+            <details>
+                <summary>显示答案与理由</summary>
+                <ul>
+                    <li>“给定图与整数 k，判断能否用 k 种颜色染色使相邻顶点不同色” → 图着色决策版，属于 NPC。</li>
+                    <li>“给定图，判断两点间是否存在长度不超过 k 的路径” → BFS 可在 O(V+E) 内求解，属于 P。</li>
+                    <li>“求经过每个城市恰好一次的最短回路” → TSP 优化版，是 NP-Hard；其决策版属于 NPC。</li>
+                </ul>
+                <p>一个便于记忆的判据：能“快速验证候选解”的就是 NP；再叠加“所有 NP 问题都能归约过来”才是 NPC；若连“验证”都不要求属于 NP，只要求至少和 NPC 一样难，则是 NP-Hard。</p>
+            </details>
+        </section>
 
         <h2>经典 NP 难问题目录</h2>
 
@@ -318,7 +369,7 @@
             <a href="index.html">📖 返回目录</a>
             <a href="04.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
