@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第5章 对偶理论与灵敏度分析</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 5 章 · 对偶与灵敏度</p>
+        <h1>对偶理论与灵敏度分析</h1>
 
         <h2>开篇：一次"昂贵"的误会</h2>
 
@@ -125,6 +139,34 @@ s.t. Aᵀy ≥ c
                 </tr>
             </tbody>
         </table>
+
+        <figure>
+  <svg viewBox="0 0 540 320" role="img" aria-labelledby="c5Title c5Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c5Title">最优值与约束右端项的分段线性关系及影子价格</title>
+    <desc id="c5Desc">横轴为某种资源的可用量 b，纵轴为最优利润 Z 星号。曲线是一条上升且逐渐变平的分段折线；每段的斜率就是该区间内该资源的影子价格，斜率越小说明资源不再卡脖子。</desc>
+    <line x1="64" y1="280" x2="500" y2="280" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="64" y1="280" x2="64" y2="40" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="490" y="300" font-family="system-ui,sans-serif" font-size="13" fill="#475569">资源量 b</text>
+    <text x="18" y="46" font-family="system-ui,sans-serif" font-size="13" fill="#475569">最优值 Z*</text>
+    <polyline points="64,280 260,150 400,105 500,88" fill="none" stroke="#7c3aed" stroke-width="3"/>
+    <line x1="260" y1="280" x2="260" y2="150" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <line x1="400" y1="280" x2="400" y2="105" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <circle cx="260" cy="150" r="6" fill="#dc2626"/>
+    <text x="275" y="140" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" font-weight="700" fill="#b91c1c">当前产能 b₀</text>
+    <text x="120" y="205" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#4c1d95">斜率 = 影子价格 y₁</text>
+    <text x="300" y="95" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#4c1d95">斜率变小（y₂ &lt; y₁）</text>
+  </svg>
+  <figcaption>图 1：最优值随资源量变化的分段线性曲线（教学示意图）。在最优基不变的一段内，Z*(b) 的斜率就是该约束的影子价格；跨越断点（换基）后影子价格会改变且不会上升——这正是对偶变量的互补松弛与凹性。</figcaption>
+</figure>
+
+        <p>把对偶写成标准数学形式：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="原始问题">
+            <math display="block" aria-label="原始问题：在 Ax 小于等于 b 且 x 大于等于 0 下最大化 c 转置 x"><munder><mo>max</mo><mi>x</mi></munder><msup><mi>c</mi><mo>⊤</mo></msup><mi>x</mi><mspace width="0.5em"></mspace><mtext>s.t.</mtext><mspace width="0.4em"></mspace><mi>A</mi><mi>x</mi><mo>≤</mo><mi>b</mi><mo>,</mo><mspace width="0.3em"></mspace><mi>x</mi><mo>≥</mo><mn>0</mn></math>
+        </div>
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="对偶问题">
+            <math display="block" aria-label="对偶问题：在 A 转置 y 大于等于 c 且 y 大于等于 0 下最小化 b 转置 y"><munder><mo>min</mo><mi>y</mi></munder><msup><mi>b</mi><mo>⊤</mo></msup><mi>y</mi><mspace width="0.5em"></mspace><mtext>s.t.</mtext><mspace width="0.4em"></mspace><msup><mi>A</mi><mo>⊤</mo></msup><mi>y</mi><mo>≥</mo><mi>c</mi><mo>,</mo><mspace width="0.3em"></mspace><mi>y</mi><mo>≥</mo><mn>0</mn></math>
+        </div>
 
         <h2>对偶单纯形法</h2>
 
