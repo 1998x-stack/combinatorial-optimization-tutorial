@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第6章 贪心与动态规划</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 6 章 · 贪心与动态规划</p>
+        <h1>贪心与动态规划</h1>
 
         <h2>开篇：两个程序员的故事</h2>
 
@@ -98,6 +112,37 @@ for each activity (s, f) in sorted order:
     if s >= last_finish:
         selected.append(activity)
         last_finish = f</code></pre>
+
+        <figure>
+  <svg viewBox="0 0 560 300" role="img" aria-labelledby="c6aTitle c6aDesc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c6aTitle">活动选择：按结束时间贪心的时间线</title>
+    <desc id="c6aDesc">六个活动按结束时间排序，横条表示起止时间。贪心依次选中最早结束且与已选不重叠的 A、D、E（绿色），其余冲突的 B、C、F 标灰。</desc>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="13" font-weight="700">
+      <text x="14" y="54" fill="#6b7280">A</text><text x="14" y="94" fill="#6b7280">B</text>
+      <text x="14" y="134" fill="#6b7280">C</text><text x="14" y="174" fill="#6b7280">D</text>
+      <text x="14" y="214" fill="#6b7280">E</text><text x="14" y="254" fill="#6b7280">F</text>
+    </g>
+    <g stroke="#e2e8f0" stroke-width="1">
+      <line x1="60" y1="30" x2="60" y2="270"/><line x1="148" y1="30" x2="148" y2="270"/>
+      <line x1="236" y1="30" x2="236" y2="270"/><line x1="324" y1="30" x2="324" y2="270"/>
+      <line x1="412" y1="30" x2="412" y2="270"/><line x1="500" y1="30" x2="500" y2="270"/>
+    </g>
+    <g rx="6">
+      <rect x="104" y="40" width="132" height="20" rx="6" fill="#10b981" fill-opacity="0.85"/>
+      <rect x="192" y="80" width="88" height="20" rx="6" fill="#cbd5e1"/>
+      <rect x="60" y="120" width="264" height="20" rx="6" fill="#cbd5e1"/>
+      <rect x="280" y="160" width="88" height="20" rx="6" fill="#10b981" fill-opacity="0.85"/>
+      <rect x="412" y="200" width="44" height="20" rx="6" fill="#10b981" fill-opacity="0.85"/>
+      <rect x="280" y="240" width="176" height="20" rx="6" fill="#cbd5e1"/>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="11" fill="#64748b" text-anchor="middle">
+      <text x="60" y="288">0</text><text x="148" y="288">2</text><text x="236" y="288">4</text>
+      <text x="324" y="288">6</text><text x="412" y="288">8</text><text x="500" y="288">10</text>
+    </g>
+    <text x="504" y="46" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#047857">已选 A、D、E</text>
+  </svg>
+  <figcaption>图 1：活动选择的时间线（教学示意图）。绿色为贪心选中的活动，灰色为与已选活动重叠而被跳过者；时间轴刻度为示意。</figcaption>
+</figure>
 
         <h3>经典案例：Huffman 编码</h3>
 
@@ -157,6 +202,19 @@ for each activity (s, f) in sorted order:
         <div class="warning">
             <strong>一个让我印象深刻的教训：</strong>我的一位同事曾经想用贪心法解决一个"最小化加权完成时间"的调度问题。他选择了"最短处理时间优先"（SPT）作为贪心准则，觉得非常合理。运行结果看起来也不错——直到他有一天发现，最优解比他"最优的贪心解"还要好23%。问题出在哪里？这个调度问题中，任务的权重不同，不能只看处理时间。正确的策略是"按处理时间/权重的比值排序"（Smith's Rule）。这个案例说明：<strong>贪心算法的正确性不能靠"感觉"来判定，必须要有严格的证明。</strong>
         </div>
+
+        <section class="widget" aria-labelledby="kpHead">
+            <h3 id="kpHead">动手练：找到一个贪心失效的背包实例</h3>
+            <p>容量 50。三件物品：A（重 10、值 60）、B（重 20、值 100）、C（重 30、值 120）。先自己用“性价比最高优先”推一遍，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>性价比：A = 6、B = 5、C = 4，贪心先选 A，再选能装下的 B，总重量 30、总价值 160；剩余容量 20 装不下 C。</li>
+                    <li>最优解：选 B + C，总重量 50、总价值 220 &gt; 160。</li>
+                </ul>
+                <p>结论：性价比贪心在这里给出 160，而真正的最优是 220。想让贪心保证最优，需要像拟阵那样的结构（例如分数背包），而 0/1 背包不具备这种结构。</p>
+            </details>
+        </section>
 
         <h2>贪心正确性的条件</h2>
 
@@ -256,6 +314,38 @@ for each activity (s, f) in sorted order:
 
 答案：dp[m][n]
 时间复杂度：O(mn)</code></pre>
+
+        <figure>
+  <svg viewBox="0 0 400 300" role="img" aria-labelledby="c6bTitle c6bDesc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c6bTitle">LCS 动态规划表：X=ABC，Y=ACB</title>
+    <desc id="c6bDesc">一张 4×4 的 dp 表，行对应 X 的前缀 A、B、C，列对应 Y 的前缀 A、C、B。三个字符相匹的格子（A-A、B-B、C-C）依次递增，右下角 dp 三 三 等于 2，即 LCS 长度为 2。</desc>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="14" font-weight="700" fill="#6d28d9" text-anchor="middle">
+      <text x="94" y="136">A</text><text x="94" y="182">B</text><text x="94" y="228">C</text>
+      <text x="192" y="56">A</text><text x="244" y="56">C</text><text x="296" y="56">B</text>
+    </g>
+    <rect x="166" y="112" width="52" height="46" fill="#d1fae5"/>
+    <rect x="270" y="158" width="52" height="46" fill="#d1fae5"/>
+    <rect x="218" y="204" width="52" height="46" fill="#d1fae5"/>
+    <g stroke="#94a3b8" stroke-width="1" fill="none">
+      <line x1="114" y1="66" x2="322" y2="66"/><line x1="114" y1="112" x2="322" y2="112"/>
+      <line x1="114" y1="158" x2="322" y2="158"/><line x1="114" y1="204" x2="322" y2="204"/><line x1="114" y1="250" x2="322" y2="250"/>
+      <line x1="114" y1="66" x2="114" y2="250"/><line x1="166" y1="66" x2="166" y2="250"/>
+      <line x1="218" y1="66" x2="218" y2="250"/><line x1="270" y1="66" x2="270" y2="250"/><line x1="322" y1="66" x2="322" y2="250"/>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="14" fill="#1f2937" text-anchor="middle">
+      <text x="140" y="94">0</text><text x="192" y="94">0</text><text x="244" y="94">0</text><text x="296" y="94">0</text>
+      <text x="140" y="140">0</text><text x="192" y="140">1</text><text x="244" y="140">1</text><text x="296" y="140">1</text>
+      <text x="140" y="186">0</text><text x="192" y="186">1</text><text x="244" y="186">1</text><text x="296" y="186">2</text>
+      <text x="140" y="232">0</text><text x="192" y="232">1</text><text x="244" y="232">2</text><text x="296" y="232" font-weight="700" fill="#047857">2</text>
+    </g>
+  </svg>
+  <figcaption>图 2：LCS 的 dp 表（教学示意，X = “ABC”，Y = “ACB”）。绿色格为字符相等、从左上角加 1 的转移；右下角 dp[3][3] = 2，对应 LCS “AB” 或 “AC”。</figcaption>
+</figure>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="LCS 状态转移方程">
+            <math display="block" aria-label="当 X i 等于 Y j 时，dp i j 等于 dp i-1 j-1 加 1"><mi>dp</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>[</mo><mi>j</mi><mo>]</mo><mo>=</mo><mi>dp</mi><mo>[</mo><mi>i</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>[</mo><mi>j</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>+</mo><mn>1</mn><mspace width="0.6em"></mspace><mtext>若</mtext><mspace width="0.3em"></mspace><mi>X</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>=</mo><mi>Y</mi><mo>[</mo><mi>j</mi><mo>]</mo></math>
+            <math display="block" aria-label="否则，dp i j 等于 dp i-1 j 与 dp i j-1 的较大者"><mi>dp</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>[</mo><mi>j</mi><mo>]</mo><mo>=</mo><mo>max</mo><mo>(</mo><mi>dp</mi><mo>[</mo><mi>i</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>[</mo><mi>j</mi><mo>]</mo><mo>,</mo><mspace width="0.3em"></mspace><mi>dp</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>[</mo><mi>j</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>)</mo><mspace width="0.6em"></mspace><mtext>否则</mtext></math>
+        </div>
 
         <h3>编辑距离（Edit Distance）</h3>
 
@@ -438,7 +528,7 @@ for mask = 1 to (1&lt;&lt;n)-1:
             <a href="index.html">📖 返回目录</a>
             <a href="07.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
