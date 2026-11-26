@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第21章 近似算法</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,30 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 21 章 · 近似算法</p>
+        <h1>近似算法</h1>
+
+        <figure>
+  <svg viewBox="0 0 440 200" role="img" aria-labelledby="c21Title c21Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c21Title">不同问题的近似比尺度</title>
+    <desc id="c21Desc">一条从 1 到 2.5 的近似比数轴。最优解在 1.0；Christofides 算法落在 1.5；最小权顶点覆盖贪心落在 2.0。越靠左，近似越好。</desc>
+    <line x1="50" y1="110" x2="410" y2="110" stroke="#94a3b8" stroke-width="2"/>
+    <g font-family="system-ui,sans-serif" font-size="12" fill="#64748b" text-anchor="middle">
+      <text x="50" y="135">1.0</text><text x="170" y="135">1.5</text><text x="290" y="135">2.0</text><text x="410" y="135">2.5</text>
+    </g>
+    <g stroke="#cbd5e1" stroke-width="1.5"><line x1="50" y1="104" x2="50" y2="116"/><line x1="170" y1="104" x2="170" y2="116"/><line x1="290" y1="104" x2="290" y2="116"/><line x1="410" y1="104" x2="410" y2="116"/></g>
+    <circle cx="50" cy="110" r="6" fill="#059669"/>
+    <text x="50" y="90" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#047857">最优解</text>
+    <circle cx="170" cy="110" r="6" fill="#7c3aed"/>
+    <text x="170" y="72" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#5b21b6">Christofides (TSP)</text>
+    <circle cx="290" cy="110" r="6" fill="#d97706"/>
+    <text x="290" y="90" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#92400e">顶点覆盖贪心</text>
+    <text x="230" y="175" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#475569">解 ≤ ρ × 最优 ⇒ 称 ρ-近似</text>
+  </svg>
+  <figcaption>图 1：近似比的尺度（教学示意）。左端 1.0 是理论最优，越靠右保证越弱。Christofides 给出度量 TSP 的 1.5 近似，顶点覆盖的经典贪心给出 2 近似。元启发式没有这种最坏情况保证。</figcaption>
+</figure>
 
         <h2>开篇：美国队长和灭霸的"最优解"之争</h2>
 
@@ -63,6 +97,12 @@
         <h2>近似算法设计范式</h2>
 
         <p>近似算法不是靠运气的——它有一些经典设计范式。掌握了这些范式，你就能在面对一个新问题时有章可循。</p>
+
+        <p>先统一记号：对一个最小化问题，若对任意实例 I 都有下面这个不等式，就称该算法是 ρ-近似的（ρ ≥ 1）：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="近似比定义">
+            <math display="block" aria-label="算法在实例 I 上的解不超过 ρ 倍最优解"><mi>ALG</mi><mo>(</mo><mi>I</mi><mo>)</mo><mo>≤</mo><mi>ρ</mi><mo>·</mo><mi>OPT</mi><mo>(</mo><mi>I</mi><mo>)</mo></math>
+        </div>
 
         <h3>五大设计范式总览</h3>
 
@@ -337,6 +377,21 @@ return S</code></pre>
             <strong>给非理论研究者的建议：</strong>如果你主要做工程应用，不需要理解PCP定理或UGC的细节。但你需要记住的是：<strong>不要指望所有问题都有好的近似算法</strong>。如果你的问题对应的是"近似困难的"问题（如最大独立集），就不要在近似算法上浪费时间——直接考虑启发式、分支定界、或问题结构的特殊利用。知难而退也是一种智慧。
         </div>
 
+        <section class="widget" aria-labelledby="vcHead">
+            <h3 id="vcHead">动手练：证明顶点覆盖贪心是 2-近似</h3>
+            <p>算法：反复取一条未被覆盖的边，把它两个端点都放进解，删掉这两点及其关联边，直到无边可删。请证明它给出的解不超过最优解的 2 倍。</p>
+            <details>
+                <summary>显示证明</summary>
+                <ul>
+                    <li>算法选出的边两两不相邻，构成一个匹配 M；且它已覆盖全部边——否则还能再选一条，矛盾。</li>
+                    <li>M 的所有端点就是一个顶点覆盖，大小为 2|M|，即算法解。</li>
+                    <li>M 中任意两条边都不相邻，最优覆盖要盖住每一条边，必须各用至少一个不同顶点，所以 OPT ≥ |M|。</li>
+                    <li>合并：算法解 = 2|M| ≤ 2·OPT，所以是 2-近似。</li>
+                </ul>
+                <p>这个证明的模板很好用：“找出一个下界对象（这里是匹配），再把算法解与之挂钩”。几乎所有简单近似比分析都能套这个套路。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -357,7 +412,7 @@ return S</code></pre>
             <a href="index.html">📖 返回目录</a>
             <a href="22.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>

@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第20章 次模函数优化</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,30 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 20 章 · 次模函数优化</p>
+        <h1>次模函数优化</h1>
+
+        <figure>
+  <svg viewBox="0 0 440 250" role="img" aria-labelledby="c20Title c20Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c20Title">次模性：边际收益递减</title>
+    <desc id="c20Desc">左上是嵌套的两集合 A ⊆ B，新元素 x 在 B 之外。下方两根柱分别表示把同一个 x 加入 A 和加入 B 时的边际收益，加入 A 的那根明显更高。</desc>
+    <ellipse cx="120" cy="70" rx="95" ry="52" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+    <ellipse cx="105" cy="72" rx="55" ry="30" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="105" y="76" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#4c1d95">A</text>
+    <text x="185" y="76" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#4c1d95">B</text>
+    <circle cx="255" cy="72" r="9" fill="#f59e0b"/>
+    <text x="255" y="52" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#b45309">x</text>
+    <line x1="40" y1="215" x2="420" y2="215" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect x="70" y="120" width="80" height="95" fill="#7c3aed"/>
+    <text x="110" y="112" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#5b21b6">加入 A 的收益</text>
+    <rect x="270" y="180" width="80" height="35" fill="#a78bfa"/>
+    <text x="310" y="172" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#5b21b6">加入 B 的收益</text>
+    <text x="230" y="240" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#475569">A ⊆ B ⇒ 新元素 x 的边际收益不增</text>
+  </svg>
+  <figcaption>图 1：次模性 = 边际收益递减（教学示意）。同一个新元素 x，加入较小的 A 时收益高（左柱），加入已经更大的 B 时收益低（右柱）。覆盖函数、影响力函数都满足这条规律。</figcaption>
+</figure>
 
         <h2>开篇：社交网络上的"病毒营销"困境</h2>
 
@@ -65,6 +99,10 @@
         <p>一个集合函数 <code>f: 2ᴱ → ℝ</code> 被称为<strong>次模函数（Submodular Function）</strong>，如果对任意 <code>A ⊆ B ⊆ E</code> 和 <code>x ∈ E \ B</code>，有：</p>
 
         <pre><code>f(A ∪ {x}) - f(A) ≥ f(B ∪ {x}) - f(B)</code></pre>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="次模边际收益递减不等式">
+            <math display="block" aria-label="对任意 A 包含于 B 及 B 外的 x，把 x 加入 A 的边际收益不小于加入 B 的边际收益"><mi>f</mi><mo>(</mo><mi>A</mi><mo>∪</mo><mo>{</mo><mi>x</mi><mo>}</mo><mo>)</mo><mo>−</mo><mi>f</mi><mo>(</mo><mi>A</mi><mo>)</mo><mo>≥</mo><mi>f</mi><mo>(</mo><mi>B</mi><mo>∪</mo><mo>{</mo><mi>x</mi><mo>}</mo><mo>)</mo><mo>−</mo><mi>f</mi><mo>(</mo><mi>B</mi><mo>)</mo><mo>,</mo><mspace width="0.6em"/><mi>A</mi><mo>⊆</mo><mi>B</mi><mo>,</mo><mi>x</mi><mo>∉</mo><mi>B</mi></math>
+        </div>
 
         <p>换句话说：当你已经拥有更多元素时，新增一个元素带来的收益不会更大——往往是更小。这就是"边际收益递减"。</p>
 
@@ -256,6 +294,20 @@ f 在整数点上的最小值 = f̂ 在 [0,1]^E 上的最小值</code></pre>
             <strong>有意思的后续：</strong>Kempe等人的论文发表后，Microsoft Research开发了一个叫<strong>NETRANK</strong>的系统，利用次模贪心来选择最有影响力的K个用户。他们在Facebook的一个子图上测试，发现贪心算法选出的种子集比"度中心性最高"（即选粉丝最多的）策略高出40%的传播范围。这个差距的价值——在大规模营销中——意味着数百万美元。所以，次模优化不是在"理论"上更优，而是在"真金白银"上更优。
         </div>
 
+        <section class="widget" aria-labelledby="submodHead">
+            <h3 id="submodHead">动手练：检验覆盖函数是否次模</h3>
+            <p>令元素上的集合为 U₁ = {1, 2}、U₂ = {2, 3}、U₃ = {3, 4}，覆盖函数 f(S) = |⋃_{i∈S} U_i|。取 A = {1}、B = {1, 2}，新元素 x = 3。先自己算，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>f(A) = |{1, 2}| = 2；f(A ∪ {3}) = f({1, 3}) = |{1, 2, 3, 4}| = 4，故增益为 2。</li>
+                    <li>f(B) = |{1, 2, 3}| = 3；f(B ∪ {3}) = |{1, 2, 3, 4}| = 4，故增益为 1。</li>
+                    <li>因为 A ⊆ B，且 2 ≥ 1，满足 f(A∪{x}) − f(A) ≥ f(B∪{x}) − f(B)，递减成立。</li>
+                </ul>
+                <p>直观：当 {1} 还没盖住 3、4 时，加入 U₃ 能新增两个元素；而当 B 里已有 U₂ 盖住 3 后，U₃ 只能多盖一个。这就是覆盖函数天然次模的原因。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -276,7 +328,7 @@ f 在整数点上的最小值 = f̂ 在 [0,1]^E 上的最小值</code></pre>
             <a href="index.html">📖 返回目录</a>
             <a href="21.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
