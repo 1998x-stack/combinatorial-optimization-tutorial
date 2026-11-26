@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第27章 GPU加速与量子启发</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,27 @@
             <li><a href="27.html" class="active">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 27 章 · GPU 加速与量子启发</p>
+        <h1>GPU 加速与量子启发</h1>
+
+        <figure>
+  <svg viewBox="0 0 460 220" role="img" aria-labelledby="c27Title c27Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c27Title">组合优化的三条算力路线</title>
+    <desc id="c27Desc">三列并列：CPU 精确分支割（串行但可证最优）、GPU 并行加速（大量线程并行求解 LP 与生成割）、Ising 机与量子启发（用物理演化到最低能量态求近似最优）。</desc>
+    <g font-family="system-ui,'PingFang SC',sans-serif" text-anchor="middle">
+      <rect x="14" y="40" width="132" height="46" rx="9" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/><text x="80" y="68" font-size="13" fill="#5b21b6">CPU 分支割</text>
+      <rect x="164" y="40" width="132" height="46" rx="9" fill="#d1fae5" stroke="#059669" stroke-width="1.8"/><text x="230" y="68" font-size="13" fill="#047857">GPU 并行加速</text>
+      <rect x="314" y="40" width="132" height="46" rx="9" fill="#fef3c7" stroke="#d97706" stroke-width="1.8"/><text x="380" y="68" font-size="13" fill="#92400e">Ising / 量子</text>
+      <text x="80" y="118" font-size="11.5" fill="#475569">串行搜索</text><text x="80" y="140" font-size="11.5" fill="#475569">可证明最优</text><text x="80" y="162" font-size="11.5" fill="#475569">成熟稳定</text>
+      <text x="230" y="118" font-size="11.5" fill="#475569">成千线程并行</text><text x="230" y="140" font-size="11.5" fill="#475569">并行 LP / 生成割</text><text x="230" y="162" font-size="11.5" fill="#475569">受显存与实现限制</text>
+      <text x="380" y="118" font-size="11.5" fill="#475569">物理演化到基态</text><text x="380" y="140" font-size="11.5" fill="#475569">近似最优</text><text x="380" y="162" font-size="11.5" fill="#475569">仍处早期</text>
+    </g>
+    <line x1="10" y1="30" x2="450" y2="30" stroke="#e2e8f0" stroke-width="1"/>
+  </svg>
+  <figcaption>图 1：组合优化的三条算力路线（教学示意）。三条路并非互斥：GPU 已并入 CPU 求解器的流水线（如并行割生成），而 Ising/量子路线目前主要面向 QUBO 近似求解。选路线要权衡“能否证明最优”与“能否赶上时间窗口”。</figcaption>
+</figure>
 
         <h2>开篇：当摩尔定律撞上组合爆炸</h2>
 
@@ -218,8 +249,14 @@ Q(x) = Σᵢⱼ Qᵢⱼ xᵢ xⱼ
 常见映射示例——最大割（Max-Cut）：
 Max-Cut目标：最大化跨割边的权重和
 Ising映射：令 sᵢ = +1 表示顶点i在集合A，sᵢ = -1 表示在集合B
-        能量 E(s) = -Σᵢⱼ wᵢⱼ sᵢ sⱼ
-        最小化 E(s) ↔ 最大化割边权重和</code></pre>
+        割值 = Σ_{i<j} wᵢⱼ (1 - sᵢ sⱼ) / 2
+        最大化割值 ⟺ 最小化 Σ_{i<j} wᵢⱼ sᵢ sⱼ</code></pre>
+
+        <p>Ising 模型的能量函数（与 QUBO 仅差一个变量替换）是：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Ising 能量函数">
+            <math display="block" aria-label="Ising 能量：负的耦合项求和减去外场项求和"><mi>E</mi><mo>(</mo><mi>s</mi><mo>)</mo><mo>=</mo><mo>−</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>&lt;</mo><mi>j</mi></mrow></munder><msub><mi>J</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>s</mi><mi>i</mi></msub><msub><mi>s</mi><mi>j</mi></msub><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>h</mi><mi>i</mi></msub><msub><mi>s</mi><mi>i</mi></msub></math>
+        </div>
 
         <p>类似的，TSP、图着色、背包问题等都可以映射到QUBO（虽然可能需要大量辅助变量）。一旦映射完成，我们就可以使用专门为求解Ising模型设计的物理硬件来"自然演化"到最小能量状态——相当于找到了原组合优化问题的最优解。</p>
 
@@ -352,6 +389,20 @@ Ising映射：令 sᵢ = +1 表示顶点i在集合A，sᵢ = -1 表示在集合B
             <strong>我的建议：</strong>如果你现在是组合优化的从业者，GPU加速是<strong>现在就应该掌握的技能</strong>——cuOpt和相关的GPU优化库已在工业可用阶段。Ising机和量子计算值得<strong>保持关注</strong>——每季度阅读最新的综述论文，了解硬件进展。2027-2028年将是量子纠错的关键窗口期，一旦突破，组合优化的格局将被根本性地改变。
         </div>
 
+        <section class="widget" aria-labelledby="isingHead">
+            <h3 id="isingHead">动手练：找一个最简单的基态</h3>
+            <p>两个自旋 s₁, s₂ ∈ {+1, −1}，取耦合 J = 1、外场 h = 0，能量 E = −J·s₁s₂。哪个取值使能量最低？</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>s₁ = s₂ 时：s₁s₂ = +1，E = −1（同向）。</li>
+                    <li>s₁ ≠ s₂ 时：s₁s₂ = −1，E = +1（反向）。</li>
+                    <li>因此基态是两个自旋同向，最低能量为 −1。</li>
+                </ul>
+                <p>提醒：把 Max-Cut 写成 QUBO/Ising 时，务必核对符号约定。“割边”对应 sᵢ ≠ sⱼ，所以最小化标准 Ising 能量并不直接等于最大化割值——需要把耦合取成割权重的相反数（或用 (1 − sᵢsⱼ)/2 展开），否则会“求反了”变成找最小割。</p>
+            </details>
+        </section>
+
         <h2>本章小结</h2>
 
         <p>在这一章中，我们完成了一次从数字到物理的计算范式巡礼：</p>
@@ -370,7 +421,7 @@ Ising映射：令 sᵢ = +1 表示顶点i在集合A，sᵢ = -1 表示在集合B
             <a href="index.html">📖 返回目录</a>
             <a href="28.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>

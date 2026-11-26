@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第28章 综合项目实战</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,32 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html" class="active">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 28 章 · 综合项目实战</p>
+        <h1>综合项目实战</h1>
+
+        <figure>
+  <svg viewBox="0 0 460 240" role="img" aria-labelledby="c28Title c28Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c28Title">三条项目路线与里程碑</title>
+    <desc id="c28Desc">三行流水线。精确方法行：设施选址建模、精确求解、结果验证；启发式行：实现局部搜索、多算法基准对比、参数调优；神经方法行：生成数据、训练 Pointer Network、与精确方法对比。</desc>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="12" text-anchor="middle">
+      <rect x="10" y="30" width="70" height="42" rx="8" fill="#ede9fe" stroke="#7c3aed"/><text x="45" y="56" fill="#5b21b6">精确</text>
+      <rect x="100" y="30" width="104" height="42" rx="8" fill="#f5f3ff" stroke="#c4b5fd"/><text x="152" y="56" fill="#6d28d9">设施选址建模</text>
+      <rect x="214" y="30" width="104" height="42" rx="8" fill="#f5f3ff" stroke="#c4b5fd"/><text x="266" y="56" fill="#6d28d9">精确求解</text>
+      <rect x="328" y="30" width="118" height="42" rx="8" fill="#f5f3ff" stroke="#c4b5fd"/><text x="387" y="56" fill="#6d28d9">界与最优性验证</text>
+      <rect x="10" y="100" width="70" height="42" rx="8" fill="#d1fae5" stroke="#059669"/><text x="45" y="126" fill="#047857">启发式</text>
+      <rect x="100" y="100" width="104" height="42" rx="8" fill="#ecfdf5" stroke="#6ee7b7"/><text x="152" y="126" fill="#047857">实现局部搜索</text>
+      <rect x="214" y="100" width="104" height="42" rx="8" fill="#ecfdf5" stroke="#6ee7b7"/><text x="266" y="126" fill="#047857">多算法对比</text>
+      <rect x="328" y="100" width="118" height="42" rx="8" fill="#ecfdf5" stroke="#6ee7b7"/><text x="387" y="126" fill="#047857">参数调优</text>
+      <rect x="10" y="170" width="70" height="42" rx="8" fill="#fef3c7" stroke="#d97706"/><text x="45" y="196" fill="#92400e">神经</text>
+      <rect x="100" y="170" width="104" height="42" rx="8" fill="#fffbeb" stroke="#fcd34d"/><text x="152" y="196" fill="#92400e">生成数据</text>
+      <rect x="214" y="170" width="104" height="42" rx="8" fill="#fffbeb" stroke="#fcd34d"/><text x="266" y="196" fill="#92400e">训练 Pointer Net</text>
+      <rect x="328" y="170" width="118" height="42" rx="8" fill="#fffbeb" stroke="#fcd34d"/><text x="387" y="196" fill="#92400e">对比精确方法</text>
+    </g>
+  </svg>
+  <figcaption>图 1：三条项目路线与里程碑（教学示意）。每行都从“建模/生成”到“求解/训练”再到“评估”，但评估标准不同：精确看最优性与界，启发式看质量与时间，神经看泛化与推理速度。三条线走完，才算把这门课的知识用起来。</figcaption>
+</figure>
 
         <h2>开篇：纸上得来终觉浅</h2>
 
@@ -636,6 +672,21 @@ print(f"Attention Model平均: {lengths_nco.mean():.4f}")
 print(f"2-opt平均:          {np.mean(lengths_2opt):.4f}")
 print(f"提升: {(np.mean(lengths_2opt) - lengths_nco.mean()) / np.mean(lengths_2opt) * 100:.2f}%")</code></pre>
 
+        <section class="widget" aria-labelledby="trackHead">
+            <h3 id="trackHead">动手练：为一个真实需求选路线</h3>
+            <p>某同城配送公司要做一个 200 个停靠点的每日路径优化，要求在 1 秒内给出可接受路线，允许与原最优差几个百分点。你选哪条路线？为什么？</p>
+            <details>
+                <summary>显示参考答案</summary>
+                <ul>
+                    <li>选启发式/元启发式（或直接用 OR-Tools Routing）：200 点规模 + 亚秒级时限，精确 MIP 通常来不及证明最优。</li>
+                    <li>先用最近邻等构造解，再用 2-opt / Or-opt 等局部搜索，并在时间预算内跑元启发式改进质量。</li>
+                    <li>神经方法（Pointer Network）需要大量训练与调参，且泛化到新分布未必稳，除非有持续数据与训练资源。</li>
+                    <li>评估时用“与下界/小规模精确解的差距 + 求解时间”两个指标，而不是只看最终目标值。</li>
+                </ul>
+                <p>结论：<strong>先问约束（规模、时限、能否接受近似），再选方法</strong>。这也正是本章三条项目路线要训练的判断力。</p>
+            </details>
+        </section>
+
         <h2>课程总结与下一步</h2>
 
         <p>好了，到这里，我们终于走到了28章的终点。让我带你回顾一下这趟旅程的全貌。</p>
@@ -718,7 +769,7 @@ print(f"提升: {(np.mean(lengths_2opt) - lengths_nco.mean()) / np.mean(lengths_
             <a href="index.html">📖 返回目录</a>
             <a href="javascript:void(0)">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
