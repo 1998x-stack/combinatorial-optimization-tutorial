@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第16章 建模的艺术</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,32 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 16 章 · 建模的艺术</p>
+        <h1>建模的艺术</h1>
+
+        <figure>
+  <svg viewBox="0 0 460 300" role="img" aria-labelledby="c16Title c16Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c16Title">非线性与逻辑表达的线性化手段</title>
+    <desc id="c16Desc">左栏列出四类建模难题：逻辑或、min/max、二元变量乘积、对称的等价解；右栏给出对应的 MIP 线性化技术，箭头表示转换方向。</desc>
+    <defs><marker id="c16arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#7c3aed"/></marker></defs>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="13" text-anchor="middle">
+      <rect x="10" y="30" width="190" height="44" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><text x="105" y="57" fill="#92400e">逻辑或 x = 0 或 L</text>
+      <rect x="260" y="30" width="190" height="44" rx="7" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="355" y="57" fill="#5b21b6">Big-M / Indicator 约束</text>
+      <rect x="10" y="100" width="190" height="44" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><text x="105" y="127" fill="#92400e">min(x, y) / max(x, y)</text>
+      <rect x="260" y="100" width="190" height="44" rx="7" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="355" y="127" fill="#5b21b6">辅助变量 + 一对不等式</text>
+      <rect x="10" y="170" width="190" height="44" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><text x="105" y="197" fill="#92400e">二元乘积 z = x·y</text>
+      <rect x="260" y="170" width="190" height="44" rx="7" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="355" y="197" fill="#5b21b6">三条线性不等式</text>
+      <rect x="10" y="240" width="190" height="44" rx="7" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><text x="105" y="267" fill="#92400e">对称的等价解</text>
+      <rect x="260" y="240" width="190" height="44" rx="7" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="355" y="267" fill="#5b21b6">Symmetry Breaking 约束</text>
+    </g>
+    <g stroke="#7c3aed" stroke-width="1.8" fill="none" marker-end="url(#c16arrow)">
+      <line x1="203" y1="52" x2="257" y2="52"/><line x1="203" y1="122" x2="257" y2="122"/><line x1="203" y1="192" x2="257" y2="192"/><line x1="203" y1="262" x2="257" y2="262"/>
+    </g>
+  </svg>
+  <figcaption>图 1：常见建模难题与其线性化手段（教学示意）。左栏是“原始意图”，右栏是交给求解器的“标准形式”。每一行都对应本章后文的一节；选大 M 的松紧、用不用 Indicator，直接决定松弛的强弱。</figcaption>
+</figure>
 
         <h2>开篇：一个"Big-M"引发的惨案</h2>
 
@@ -262,6 +298,20 @@ y ≥ x_i - M*(1 - z_i),  Σz_i = 1,  z_i ∈ {0,1}
             <strong>一个诚恳的建议：</strong>不要相信"第一次就能建好模型"。我在第10个MIP项目之后，仍然会犯低级错误——忘记设置变量边界、Big-M算错了一位、把≥写成≤等等。我的工作流程是：建好第一个版本 → 跑一个最小测试实例，盯着看解的每一行 → 发现问题 → 修改 → 再跑。循环3~5次后模型才会变得可靠。建模和写代码一样——debug的时间总是比写代码的时间长。做好心理准备。
         </div>
 
+        <section class="widget" aria-labelledby="bigmHead">
+            <h3 id="bigmHead">动手练：为“要么…要么…”选一个合适的 Big-M</h3>
+            <p>决策：某产线要么开工（产量 x ≥ 10），要么停产（x = 0），用二元变量 y 表示是否开工。设 x 的物理上限为 40。先自己写出约束，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>开工时 x ≥ 10：写成 x ≥ 10y。</li>
+                    <li>停产时 x = 0：用 x ≤ M·y，其中 M 要覆盖 x 的最大可能值。</li>
+                    <li>最紧的取法：M = 40（x 的上限）。不要图省事写 M = 10⁶。</li>
+                </ul>
+                <p>为什么 M 太大不好？因为当 y = 1 时，约束 x ≤ M·y 只给出 x ≤ 10⁶，几乎没有收紧 LP 松弛；求解器会在这片巨大的“伪可行域”里空转。M 越贴近真实上界，松弛越紧、求解越快。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -282,7 +332,7 @@ y ≥ x_i - M*(1 - z_i),  Σz_i = 1,  z_i ∈ {0,1}
             <a href="index.html">📖 返回目录</a>
             <a href="17.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>

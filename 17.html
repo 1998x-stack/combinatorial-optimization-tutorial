@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第17章 约束规划</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,30 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 17 章 · 约束规划</p>
+        <h1>约束规划</h1>
+
+        <figure>
+  <svg viewBox="0 0 460 250" role="img" aria-labelledby="c17Title c17Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c17Title">cumulative 约束下的可行排程</title>
+    <desc id="c17Desc">四个任务 A、B、C、D 在时间轴上的甘特图。A 与 B、C 与 D 各自有重叠，但任意时刻同时进行的任务都不超过 2 个，满足容量为 2 的 cumulative 约束。</desc>
+    <line x1="40" y1="200" x2="440" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
+    <g font-family="system-ui,sans-serif" font-size="11" fill="#64748b" text-anchor="middle">
+      <text x="40" y="218">0</text><text x="120" y="218">2</text><text x="200" y="218">4</text><text x="280" y="218">6</text><text x="360" y="218">8</text><text x="440" y="218">10</text>
+    </g>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#fff" text-anchor="middle">
+      <rect x="80" y="20" width="120" height="26" rx="5" fill="#7c3aed"/><text x="140" y="38">A</text>
+      <rect x="120" y="56" width="60" height="26" rx="5" fill="#7c3aed"/><text x="150" y="74">B</text>
+      <rect x="200" y="92" width="120" height="26" rx="5" fill="#059669"/><text x="260" y="110">C</text>
+      <rect x="280" y="128" width="80" height="26" rx="5" fill="#059669"/><text x="320" y="146">D</text>
+    </g>
+    <line x1="280" y1="16" x2="280" y2="192" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="286" y="14" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#b91c1c">此刻并发 2 个，达到容量上限</text>
+  </svg>
+  <figcaption>图 1：容量为 2 的 cumulative 约束排程（教学示意）。时间轴上是四个任务的区间，同一时刻同时进行的任务最多 2 个（图中在 t = 6 附近）。CP 求解器直接以这种区间与容量的视角推理，而 MIP 需要把“重叠”翻译成一堆线性不等式。</figcaption>
+</figure>
 
         <h2>开篇：一个让MIP求解器"崩溃"的排程问题</h2>
 
@@ -283,6 +317,20 @@ for each nurse, day, shift:
             <strong>学习资源推荐：</strong>如果你想深入实践CP，Google OR-Tools CP-SAT的官方文档和示例（GitHub上or-tools仓库的examples目录）是最好的学习材料。CP-SAT的Python API非常直观，而且性能卓越。另外，IBM CP Optimizer也是一个强大的商业CP求解器，与Gurobi互补。
         </div>
 
+        <section class="widget" aria-labelledby="cpHead">
+            <h3 id="cpHead">动手练：用 all-different 建模“一人一岗”</h3>
+            <p>四位员工每人恰好分配到一个岗位，四个岗位各不相同（一一对应）。在 CP 模型里怎么表达？先自己想一想，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>为每位员工设一个整数变量 w_i ∈ {1, 2, 3, 4}，表示其岗位编号。</li>
+                    <li>用一条 all-different(w₁, w₂, w₃, w₄) 就表达了“岗位互不相同”。</li>
+                    <li>若换成 MIP，需要引入 4×4 个 0-1 变量并加“每行每列和为 1”的约束——变量和约束都多得多。</li>
+                </ul>
+                <p>这正是 CP 的价值：全局约束把一整类组合结构（排列、无重叠）封装成一个原子约束，求解器可以用专门的传播算法直接剪枝，而不必展开成一堆线性不等式。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -303,7 +351,7 @@ for each nurse, day, shift:
             <a href="index.html">📖 返回目录</a>
             <a href="18.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
