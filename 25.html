@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第25章 元启发式算法</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,27 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 25 章 · 元启发式算法</p>
+        <h1>元启发式算法</h1>
+
+        <figure>
+  <svg viewBox="0 0 440 240" role="img" aria-labelledby="c25Title c25Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c25Title">元启发式在崎岖地形上跳出局部最优</title>
+    <desc id="c25Desc">一条起伏的目标函数曲线，有多个低点。红点是一个局部最优，绿点是全局最优。虚线箭头表示算法以一定概率接受劣解，从而翻过山脊到达全局最优所在的山谷。</desc>
+    <defs><marker id="c25a" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#f59e0b"/></marker></defs>
+    <polyline points="20,70 60,150 100,180 140,110 180,165 220,120 265,190 310,200 350,130 395,80 425,55" fill="none" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="20" y1="215" x2="425" y2="215" stroke="#94a3b8" stroke-width="1.5"/>
+    <circle cx="100" cy="180" r="5" fill="#dc2626"/>
+    <text x="100" y="200" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#b91c1c">局部最优</text>
+    <circle cx="310" cy="200" r="5" fill="#059669"/>
+    <text x="320" y="226" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#047857">全局最优</text>
+    <path d="M120,168 Q210,120 292,182" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#c25a)"/>
+    <text x="235" y="108" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#b45309">接受劣解，翻过山脊</text>
+  </svg>
+  <figcaption>图 1：元启发式在崎岖地形上跳出局部最优（教学示意）。横轴是解空间，纵轴是目标值。梯度/贪心会停在红点（局部最优）；SA、GA、TS 等以不同机制“接受劣解”或“保留历史”，从而有机会到达绿点（全局最优）。</figcaption>
+</figure>
 
         <h2>开篇：当"最优解"不再是最重要的</h2>
 
@@ -148,6 +179,10 @@ def get_neighbors_2opt(tour):
         <h3>模拟退火（Simulated Annealing, SA）</h3>
 
         <p>从冶金中的退火过程得到启发：高温时原子剧烈运动（允许大幅探索），逐渐降温后趋于稳定（收敛）。核心是<strong>Metropolis准则</strong>——以概率 <code>exp(-ΔE/T)</code> 接受劣解。初始温度高 → 广泛搜索；温度下降 → 收敛。</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Metropolis 接受准则">
+            <math display="block" aria-label="接受劣解的概率等于 exp 负的劣化量除以温度"><mi>P</mi><mo>(</mo><mtext>接受</mtext><mo>)</mo><mo>=</mo><mi>exp</mi><mo>(</mo><mo>−</mo><mfrac><mrow><mi>Δ</mi><mi>E</mi></mrow><mi>T</mi></mfrac><mo>)</mo></math>
+        </div>
 
         <pre><code>import math, random
 
@@ -450,6 +485,19 @@ def tsp_perturb(tour, strength=3):
             <strong>一个诚恳的提醒：</strong>元启发式领域有一个众所周知的"陷阱"——学术界和工业界的巨大鸿沟。在学术论文中，元启发式通常在精心挑选的测试实例上、在充足的运行时间下、用统计学检验证明自己的优越性。但在工业界，你的代码必须面对从未见过的数据分布、无法预测的约束变化、以及每天只有10秒的运行时间。你的"优雅的设计"在面对一个诡异的数据Bug时，可能一夜之间跑出荒谬的结果。因此，我强烈建议——在生产环境中为元启发式加上<strong>可行性检查器</strong>和<strong>解质量监控</strong>。前者确保输出解满足所有显式约束，后者追踪解质量随时间的变化趋势，在质量骤降时触发告警。这是用真金白银买的教训。
         </div>
 
+        <section class="widget" aria-labelledby="saHead">
+            <h3 id="saHead">动手练：算一算接受劣解的概率</h3>
+            <p>Metropolis 准则 P = exp(−ΔE/T)。设劣化量 ΔE = 2。分别计算 T = 1 与 T = 10 时的接受概率（用 e ≈ 2.718 估算即可）。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>T = 1：P = e^(−2) ≈ 0.135，只有约 13.5% 的概率接受这个劣解。</li>
+                    <li>T = 10：P = e^(−0.2) ≈ 0.819，约 82% 的概率接受同一个劣解。</li>
+                </ul>
+                <p>结论：温度越高，越“敢于”接受劣解、越能翻越山脊；随着 T 下降，接受劣解的概率迅速趋于 0，算法逐渐收敛到当前最优。这正是“先广搜、后收敛”的数学体现。</p>
+            </details>
+        </section>
+
         <h2>本章小结</h2>
 
         <p>这一章我们从"为什么需要元启发式"开始，走过了它的完整画卷：</p>
@@ -472,7 +520,7 @@ def tsp_perturb(tour, strength=3):
             <a href="index.html">📖 返回目录</a>
             <a href="26.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
