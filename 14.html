@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第14章 多面体组合</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,10 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 14 章 · 多面体组合</p>
+        <h1>多面体组合</h1>
 
         <h2>开篇：大象的骨骼</h2>
 
@@ -70,6 +84,10 @@
 
         <p>设 S ⊆ ℤⁿ 是一个整数点集（例如所有可行匹配的指示向量集合）。S 的<strong>凸包（Convex Hull）</strong>定义为：</p>
 
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="凸包定义：S 的所有有限凸组合">
+            <math display="block" aria-label="conv S 等于有限凸组合集合：λ_i 非负且求和为 1"><mi>conv</mi><mo>(</mo><mi>S</mi><mo>)</mo><mo>=</mo><mrow><mo>{</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow></munder><msub><mi>λ</mi><mi>i</mi></msub><msub><mi>x</mi><mi>i</mi></msub><mo>|</mo><msub><mi>λ</mi><mi>i</mi></msub><mo>≥</mo><mn>0</mn><mo>,</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn><mo>,</mo><msub><mi>x</mi><mi>i</mi></msub><mo>∈</mo><mi>S</mi><mo>}</mo></mrow></math>
+        </div>
+
         <pre><code>conv(S) = { ∑_{i=1}^{k} λ_i x_i | k ≥ 1, x_i ∈ S, λ_i ≥ 0, ∑ λ_i = 1 }
 
 即 S 中所有点的凸组合的集合。</code></pre>
@@ -86,6 +104,27 @@
 
 因为目标函数是线性的，所以它的最优解一定
 可以在 conv(S) 的某个顶点（极点）上取到。</code></pre>
+
+        <figure>
+  <svg viewBox="0 0 320 320" role="img" aria-labelledby="c14Title c14Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c14Title">LP 松弛与整数凸包的对比</title>
+    <desc id="c14Desc">约束 2x+3y≤12、3x+2y≤12、x,y≥0 的可行域是一个四边形，顶点 (2.4,2.4) 是分数解。绿色火焰形包住所有整数可行点，它在分数顶点处削去一个角，这正是整数凸包比 LP 松弛更紧的地方。</desc>
+    <line x1="60" y1="270" x2="300" y2="270" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="60" y1="270" x2="60" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="305" y="275" font-family="system-ui,sans-serif" font-size="12" fill="#64748b">x</text>
+    <text x="50" y="28" font-family="system-ui,sans-serif" font-size="12" fill="#64748b">y</text>
+    <polygon points="60,270 220,270 156,174 60,110" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <polygon points="60,270 220,270 180,230 140,190 100,150 60,110" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="7 5"/>
+    <g fill="#059669">
+      <circle cx="220" cy="270" r="3.5"/><circle cx="180" cy="230" r="3.5"/><circle cx="140" cy="190" r="3.5"/><circle cx="100" cy="150" r="3.5"/><circle cx="60" cy="110" r="3.5"/><circle cx="60" cy="270" r="3.5"/>
+    </g>
+    <circle cx="156" cy="174" r="5" fill="#dc2626"/>
+    <text x="166" y="170" font-family="system-ui,'PingFang SC',sans-serif" font-size="12" fill="#b91c1c">(2.4, 2.4) 分数顶点</text>
+    <text x="150" y="300" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#6d28d9">LP 松弛（实线）</text>
+    <text x="150" y="317" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#047857">整数凸包（虚线，更紧）</text>
+  </svg>
+  <figcaption>图 1：LP 松弛与整数凸包（教学示意）。紫实线是约束 2x+3y ≤ 12、3x+2y ≤ 12、x, y ≥ 0 的可行域，最优顶点 (2.4, 2.4) 带分数分量；绿虚线是先取整数可行点再作凸包得到的整数凸包，它在右上角把分数顶点“削平”。两者围成的狭窄区域，就是分支定界需要弥合的整数性差距。</figcaption>
+</figure>
 
         <p>这个等价关系是<strong>整式规划理论的核心</strong>。它告诉我们：任何整数规划问题最终都是某个多面体上的线性规划问题。区别在于：这个多面体（conv(S)）是否容易描述（即是否只有少量线性不等式）。</p>
 
@@ -265,13 +304,28 @@ x_e ≥ 0              ∀ e ∈ E</code></pre>
             <li><strong>分支与切割的协同：</strong>当割平面无法进一步收紧时，分支将问题分解为子问题，而每个子问题又可以继续使用割平面。这个协同作用使得原本爆炸的搜索树变得可控。</li>
         </ol>
 
-        <p>David Applegate、Robert Bixby、Vašek Chvátal 和 William Cook 在2006年用 Concorde 求解器精确求解了一个 85,900 城市的 TSP 实例——这被认为是组合优化领域最伟大的实际成就之一。即使到今天，没有多面体理论，这个成就是完全不可想象的。</p>
+        <p>David Applegate、Robert Bixby、Vašek Chvátal 和 William Cook 在2006年用 Concorde 求解器精确求解了一个 85,900 城市的 TSP 实例——这被认为是组合优化领域最伟大的实际成就之一（出处：四人合著《The Traveling Salesman Problem: A Computational Study》，Princeton University Press，2006）。即使到今天，没有多面体理论，这个成就是完全不可想象的。</p>
 
         <div class="highlight">
             <strong>一个经常被问的问题：</strong>"既然 TSP 是 NP-难的，为什么求解器能解百万城市的实例？"答案是：NP-难的最坏情况界并不排除大多数实际实例可以被高效求解的可能性。多面体理论告诉我们，对于"现实中出现"的 TSP 实例，它们的多面体结构往往非常"好"——不等式松弛非常紧，分支树非常小。复杂性理论说的"存在一些困难实例，让所有算法都表现很差"，但这些"最坏情况实例"在现实中几乎从不出现在物流、PCB 钻孔、DNA 测序等场景中。
         </div>
 
         <p>多面体理论还催生了一个重要的工程领域——<strong>自动生成有效不等式</strong>。现代求解器（Gurobi、SCIP）内部集成了数十种分离子程序，针对不同类型的约束自动检测并添加有效不等式。求解器使用者不需要知道梳状不等式是什么——求解器会在求解过程中自动检测并添加它们。但这背后的理论支撑，正是多面体组合学。</p>
+
+        <section class="widget" aria-labelledby="polyHead">
+            <h3 id="polyHead">动手练：用一条有效不等式弥合整数性差距</h3>
+            <p>回到图 1 的可行域：2x + 3y ≤ 12、3x + 2y ≤ 12、x, y ≥ 0。先自己算，再展开对照。</p>
+            <details>
+                <summary>显示答案与推导</summary>
+                <ul>
+                    <li>LP 松弛：最大化 x + y 在分数顶点 (2.4, 2.4) 取到 4.8。</li>
+                    <li>整数最优：(2,2)、(3,1)、(1,3) 都给出 x + y = 4，故整数最优值为 4，整数性差距为 0.8。</li>
+                    <li>观察：所有整数可行点都满足 x + y ≤ 4，因此 x + y ≤ 4 是一条<strong>有效不等式</strong>。</li>
+                    <li>把 x + y ≤ 4 加入后，可行域变成三角形 (0,0)、(4,0)、(0,4)，顶点全为整数——这正是理想公式。</li>
+                </ul>
+                <p>这个练习说明了多面体理论的核心动作：找到能“削去分数角”的有效不等式，把 LP 松弛一点点推向整数凸包。<strong>注意</strong>：三角形顶点是否恰好全整数依赖于本例选取的系数（教学示意）；一般问题需要切平面反复分离，不能保证一条不等式就到位。</p>
+            </details>
+        </section>
 
         <h2>本章小结与下章预告</h2>
 
@@ -291,7 +345,7 @@ x_e ≥ 0              ∀ e ∈ E</code></pre>
             <a href="index.html">📖 返回目录</a>
             <a href="15.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
