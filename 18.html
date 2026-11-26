@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第18章 分解方法</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,29 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 18 章 · 分解方法</p>
+        <h1>分解方法</h1>
+
+        <figure>
+  <svg viewBox="0 0 440 250" role="img" aria-labelledby="c18Title c18Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c18Title">Benders 分解的主问题与子问题循环</title>
+    <desc id="c18Desc">上方是主问题（MIP，只含少量变量），下方是子问题（LP 或对偶）。主问题把决策传给子问题；子问题求解后返回最优性割或可行性割，再回到主问题收紧模型，如此循环。</desc>
+    <defs><marker id="c18arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#7c3aed"/></marker><marker id="c18arrow2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#059669"/></marker></defs>
+    <rect x="70" y="30" width="300" height="60" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="220" y="58" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" fill="#5b21b6">主问题 Master（MIP，少量变量）</text>
+    <text x="220" y="78" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#6d28d9">决定 y，并不断累积割</text>
+    <rect x="70" y="160" width="300" height="60" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <text x="220" y="188" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="14" fill="#047857">子问题 Subproblem（LP / 对偶）</text>
+    <text x="220" y="208" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#047857">固定 y*，评价值与生成割</text>
+    <line x1="220" y1="90" x2="220" y2="156" stroke="#7c3aed" stroke-width="2" marker-end="url(#c18arrow)"/>
+    <text x="228" y="128" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#6d28d9">给定 y*</text>
+    <line x1="150" y1="160" x2="150" y2="94" stroke="#059669" stroke-width="2" marker-end="url(#c18arrow2)"/>
+    <text x="10" y="128" font-family="system-ui,'PingFang SC',sans-serif" font-size="11" fill="#047857">返回最优性/可行性割</text>
+  </svg>
+  <figcaption>图 1：Benders 分解的迭代循环（教学示意）。主问题只保留“难”的整数变量 y 与累积的割；每次固定 y* 后，子问题求解一个 LP（或其等价的对偶）并返回一条割。割不断加入主问题，上下界逐步逼近。</figcaption>
+</figure>
 
         <h2>开篇：当"一块求解"不再管用</h2>
 
@@ -129,6 +162,14 @@ L(λ) = min  cᵀx + λᵀ(e - Dx)
    c. 更新 λᵗ⁺¹ = max(0, λᵗ + αᵗ · gᵗ)
    d. 其中 αᵗ 是步长，通常 αᵗ = β / (t+1)（递减步长）
 3. 重复直到收敛</code></pre>
+
+        <p>把更新步骤单独写成公式，就是次梯度法的心脏：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="次梯度更新公式">
+            <math display="block" aria-label="λ 的下一轮等于 0 与 λ 加步长乘次梯度的较大者"><msup><mi>λ</mi><mrow><mi>t</mi><mo>+</mo><mn>1</mn></mrow></msup><mo>=</mo><mi>max</mi><mo>(</mo><mn>0</mn><mo>,</mo><msup><mi>λ</mi><mi>t</mi></msup><mo>+</mo><msup><mi>α</mi><mi>t</mi></msup><msup><mi>g</mi><mi>t</mi></msup><mo>)</mo></math>
+        </div>
+
+        <p>其中步长 αᵗ 必须递减，才能保证收敛；αᵗ 选得太大，λ 会在最优点附近振荡；选得太小，则爬升太慢。</p>
 
         <p>次梯度法的收敛速度是O(1/√T)，这意味着要想精度提高一个数量级，迭代次数需要增加两个数量级。这就是为什么Lagrange松弛通常只用来计算下界，而不是直接用来求最优解。</p>
 
@@ -283,6 +324,21 @@ L(λ) = min  cᵀx + λᵀ(e - Dx)
             <strong>展望：</strong>分解方法的"自动化"和"学习化"是两个大趋势。未来5~10年，求解器可能会自动为你的模型选择并实现最优的分解策略——就像今天的求解器自动选择割平面一样。但即使到那一天，理解分解方法背后的思想仍然重要——因为只有理解分解的"为什么"，你才能在求解器自动分解失败时诊断问题。
         </div>
 
+        <section class="widget" aria-labelledby="lagHead">
+            <h3 id="lagHead">动手练：用 Lagrange 松弛算一个上界</h3>
+            <p>原问题：max 3x + 2y，s.t. x + y ≤ 4，2x + y ≤ 6，x, y ≥ 0。把较难处理的约束 x + y ≤ 4 松弛掉，乘子 λ ≥ 0。先自己推，再展开对照。</p>
+            <details>
+                <summary>显示推导</summary>
+                <ul>
+                    <li>Lagrange 函数 L(λ) = 4λ + max{ (3−λ)x + (2−λ)y : 2x + y ≤ 6, x, y ≥ 0 }。</li>
+                    <li>λ = 0 时，最优在 (0, 6)，L = 12——去掉约束后可行域变大，所以这是一个有效的<strong>上界</strong>。</li>
+                    <li>λ = 1 时，目标变成 max{ 2x + y : 2x + y ≤ 6 } = 6，故 L = 4 + 6 = 10。</li>
+                    <li>该问题的真实最优是 (2, 2) 处的 10，因此 λ = 1 时上界已经取到最优值，对偶间隙为 0。</li>
+                </ul>
+                <p>体会：对最大化问题，松弛“≤”约束得到的是上界，我们用 min_λ L(λ) 把它拉紧。选对了 λ，界甚至比 LP 松弛更紧——但次梯度法只能一步步逼近这个最优 λ。</p>
+            </details>
+        </section>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
@@ -303,7 +359,7 @@ L(λ) = min  cᵀx + λᵀ(e - Dx)
             <a href="index.html">📖 返回目录</a>
             <a href="19.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
