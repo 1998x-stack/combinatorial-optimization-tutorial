@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第15章 MIP求解器原理</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,10 +53,12 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 15 章 · MIP 求解器原理</p>
+        <h1>MIP 求解器原理</h1>
 
-        <h2>开篇：求解器背后的"黑盒"</h2>
+        <h2>开篇：求解器背后的“黑盒”</h2>
 
         <p>大家好，我是你们的讲师。今天我们来聊聊MIP求解器——这个在工业界被无数人当作"黑盒"使用的神器。</p>
 
@@ -59,6 +73,26 @@
         <pre><code>输入(.mps/.lp) → Presolve → Root LP Relaxation
     → Cut Loop → Branch-and-Bound Tree
     → Heuristics (穿插运行) → 输出最优解</code></pre>
+
+        <figure>
+  <svg viewBox="0 0 240 374" width="240" role="img" aria-labelledby="c15Title c15Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c15Title">MIP 求解器处理流水线</title>
+    <desc id="c15Desc">六个阶段自上而下排列：Presolve 预求解、根节点 LP 松弛、割平面循环、分支定界树、穿插运行的原始启发式，最后输出最优解。箭头表示求解器的推进方向。</desc>
+    <defs><marker id="c15arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#7c3aed"/></marker></defs>
+    <g font-family="system-ui,'PingFang SC',sans-serif" font-size="14" text-anchor="middle">
+      <rect x="20" y="20" width="200" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="120" y="47" fill="#5b21b6">① Presolve 预求解</text>
+      <rect x="20" y="78" width="200" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="120" y="105" fill="#5b21b6">② 根节点 LP 松弛</text>
+      <rect x="20" y="136" width="200" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="120" y="163" fill="#5b21b6">③ 割平面循环</text>
+      <rect x="20" y="194" width="200" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/><text x="120" y="221" fill="#5b21b6">④ 分支定界树</text>
+      <rect x="20" y="252" width="200" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5 4"/><text x="120" y="279" fill="#5b21b6">⑤ 原始启发式（穿插）</text>
+      <rect x="20" y="310" width="200" height="44" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/><text x="120" y="337" fill="#047857">⑥ 输出最优解</text>
+    </g>
+    <g stroke="#7c3aed" stroke-width="1.8" fill="none" marker-end="url(#c15arrow)">
+      <line x1="120" y1="64" x2="120" y2="76"/><line x1="120" y1="122" x2="120" y2="134"/><line x1="120" y1="180" x2="120" y2="192"/><line x1="120" y1="238" x2="120" y2="250"/><line x1="120" y1="296" x2="120" y2="308"/>
+    </g>
+  </svg>
+  <figcaption>图 1：MIP 求解器流水线（教学示意）。整数变量在②处被松弛为连续变量得到下界，③反复加割收紧下界，④在搜索树中分支，⑤随时提供可行上界，上下界交汇即得最优解。各阶段的耗时占比随模型而异。</figcaption>
+</figure>
 
         <p>每一步都有明确的目标：</p>
 
@@ -106,6 +140,14 @@
                 </tr>
             </tbody>
         </table>
+
+        <p>衡量求解器“离最优还有多远”的标准尺度是<strong>相对对偶间隙（MIP Gap）</strong>：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="相对对偶间隙公式">
+            <math display="block" aria-label="相对对偶间隙等于上界减下界的绝对值除以上界的绝对值"><mtext>Gap</mtext><mo>=</mo><mfrac><mrow><mo>|</mo><mi>U</mi><mi>B</mi><mo>−</mo><mi>L</mi><mi>B</mi><mo>|</mo></mrow><mrow><mo>|</mo><mi>U</mi><mi>B</mi><mo>|</mo></mrow></mfrac></math>
+        </div>
+
+        <p>其中 UB 是当前找到的最好可行解目标值（上界），LB 是 LP 松弛给出的理论下界。当 Gap 降到 0，意味着已证明当前解就是最优。</p>
 
         <div class="tip">
             <strong>小贴士：</strong>求解器日志中每一行都包含大量信息。学会读日志是一项关键技能——Gurobi日志中的每一行会显示当前节点编号、深度、当前上界/下界、Gap、已探索节点数等。如果发现Gap长时间不下降，通常意味着根节点下界不够紧，需要检查割平面是否被误关或模型本身松弛太弱。
@@ -274,7 +316,23 @@ s.t. x + y ≤ 10
 
         <div class="highlight">
             <strong>性能数据对比：</strong>MIPLIB 2017基准测试中，Gurobi 11.0在30分钟内能求解的问题数量是CPLEX 12.10的1.8倍，是SCIP 8.0的3.5倍。COPT 7.0的求解数量是CPLEX的1.5倍。10年的求解器进步，相当于将求解速度提升了两个数量级。记住，你写的任何一个MIP模型，放在20年前的求解器上，求解时间可能要多出两个数量级。
+            <p style="margin-top:8px;font-size:0.95em"><strong>数据说明：</strong>上述倍数与“500倍”“两个数量级”均来自公开基准测试的概估，随版本、硬件与具体问题集而异，页面将其作为趋势性的教学示意，精确排名请以求解器官方基准报告为准。</p>
         </div>
+
+        <section class="widget" aria-labelledby="presolveHead">
+            <h3 id="presolveHead">动手练：像 Presolve 一样收紧边界</h3>
+            <p>给定约束 x + y ≤ 10、x ≥ 6、x, y ≥ 0 且为整数。先自己推理，再展开对照。</p>
+            <details>
+                <summary>显示答案</summary>
+                <ul>
+                    <li>由 x ≥ 6 与 x + y ≤ 10 可得 y ≤ 10 − x ≤ 4，于是 y 的上界从 +∞ 收紧到 4。</li>
+                    <li>反过来，由 y ≥ 0、x + y ≤ 10 得 x ≤ 10，故 x ∈ [6, 10]。</li>
+                    <li>再检查 x + y ≤ 10：在 x ≤ 10、y ≤ 4 下仍可能取到 x = 10, y = 0，故它不被支配，不能删除。</li>
+                    <li>固定变量：若再有 2x + 3y ≤ 5，结合 x, y ≥ 1（整数），唯一可行是 x = 1, y = 1。</li>
+                </ul>
+                <p>这类“边界传播”可以反复迭代：收紧一个变量的界后，又可能从其他约束推出更紧的界。Presolve 本质上就是把这种推理在约束图上跑到不动点。</p>
+            </details>
+        </section>
 
         <h2>本章小结与下章预告</h2>
 
@@ -296,7 +354,7 @@ s.t. x + y ≤ 10
             <a href="index.html">📖 返回目录</a>
             <a href="16.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
