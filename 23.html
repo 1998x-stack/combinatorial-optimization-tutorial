@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第23章 求解器实战(上)</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线自包含的关键布局与移动端安全规则 */
+        * { box-sizing: border-box; }
+        .container, .main-content { min-width: 0; }
+        pre { max-width: 100%; overflow-x: auto; }
+        img, svg { max-width: 100%; height: auto; }
+        .math-scroll { display: inline-block; vertical-align: middle; max-width: 100%; overflow-x: auto; }
+        .skip-link { position: absolute; left: -999px; top: 0; background: #7c3aed; color: #fff; padding: 8px 16px; text-decoration: none; }
+        .skip-link:focus { left: 0; }
+        @media (max-width: 768px) { table { display: block; overflow-x: auto; } }
+    </style>
 </head>
 <body>
+<a class="skip-link" href="#content">跳到正文</a>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>📐 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 什么是组合优化</a></li>
@@ -41,8 +53,33 @@
             <li><a href="27.html">第27章 GPU加速与量子启发</a></li>
             <li><a href="28.html">第28章 综合项目实战</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
+        <p class="chapter-kicker">第 23 章 · 求解器实战（上）</p>
+        <h1>求解器实战（上）</h1>
+
+        <figure>
+  <svg viewBox="0 0 440 240" role="img" aria-labelledby="c23Title c23Desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="c23Title">设施选址：开哪些仓、客户怎么分配</title>
+    <desc id="c23Desc">上方三个候选仓库，其中左右两个被选中（实心绿色），中间一个不开（灰色虚线）。下方五个客户通过分配边连到某个开着的仓库，每条边代表一份配送或固定成本。</desc>
+    <g stroke="#94a3b8" stroke-width="1.4" fill="none">
+      <line x1="60" y1="190" x2="100" y2="70"/><line x1="140" y1="190" x2="100" y2="70"/><line x1="220" y1="190" x2="100" y2="70"/>
+      <line x1="300" y1="190" x2="340" y2="70"/><line x1="380" y1="190" x2="340" y2="70"/>
+    </g>
+    <g font-family="system-ui,sans-serif" font-size="11" font-weight="700" text-anchor="middle">
+      <rect x="82" y="52" width="36" height="36" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/><text x="100" y="75" fill="#047857">F1</text>
+      <rect x="202" y="52" width="36" height="36" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 3"/><text x="220" y="75" fill="#64748b">F2</text>
+      <rect x="322" y="52" width="36" height="36" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/><text x="340" y="75" fill="#047857">F3</text>
+      <circle cx="60" cy="190" r="11" fill="#ede9fe" stroke="#7c3aed"/><text x="60" y="194" fill="#5b21b6">c1</text>
+      <circle cx="140" cy="190" r="11" fill="#ede9fe" stroke="#7c3aed"/><text x="140" y="194" fill="#5b21b6">c2</text>
+      <circle cx="220" cy="190" r="11" fill="#ede9fe" stroke="#7c3aed"/><text x="220" y="194" fill="#5b21b6">c3</text>
+      <circle cx="300" cy="190" r="11" fill="#ede9fe" stroke="#7c3aed"/><text x="300" y="194" fill="#5b21b6">c4</text>
+      <circle cx="380" cy="190" r="11" fill="#ede9fe" stroke="#7c3aed"/><text x="380" y="194" fill="#5b21b6">c5</text>
+    </g>
+    <text x="220" y="230" text-anchor="middle" font-family="system-ui,'PingFang SC',sans-serif" font-size="12.5" fill="#475569">开仓固定成本 + 客户分配成本 = 总目标</text>
+  </svg>
+  <figcaption>图 1：设施选址（教学示意）。决策有两层：二进制变量 y_f 决定仓开不开，分配变量 x_cf 决定客户连到哪个仓。目标是最小化“开仓固定成本 + 所有客户的分摊运输成本”，这正是本章 Gurobi/PuLP 实战模型的核心结构。</figcaption>
+</figure>
 
         <h2>开篇：求解器——把数学变为现实的魔法棒</h2>
 
@@ -517,6 +554,21 @@ Optimal objective -1.209000e+04
             <strong>关键洞察：</strong>很多新手遇到求解慢的第一反应是"加更多参数"或者"换求解器"。但实际上，90%的性能问题在于<strong>模型质量</strong>——你写的MIP formulation不够"紧"（tight），导致LP松弛的界很弱。在怀疑求解器之前，先用LP relaxation跑一次，看根节点的gap。如果根节点gap超过50%，调参数没用，必须回归到第14章的多面体理论和第16章的建模艺术，添加有效不等式来收紧模型。
         </div>
 
+        <section class="widget" aria-labelledby="dbgHead">
+            <h3 id="dbgHead">动手练：2 小时仍卡在 Gap=15%，先查什么？</h3>
+            <p>日志显示：Presolve 只消除约 10% 的变量，根节点几乎没生成有效割，Gap 长时间不降。请给出一个合理的排查顺序。</p>
+            <details>
+                <summary>显示参考答案</summary>
+                <ol>
+                    <li>先看模型本身：是否用了过大的 Big-M、冗余约束，或本可被 Presolve 识别却写成了非线性的逻辑约束。</li>
+                    <li>再确认割没被误关：检查 Cuts 参数；必要时调到 2~3，让根节点更积极地生成割。</li>
+                    <li>看数值稳定性：巨大系数会让割生成与 LP 求解一起退化，考虑缩放系数、收紧变量界。</li>
+                    <li>最后才动分支策略（MIPFocus、BranchDir）与启发式开关——模型不干净时，调这些收效有限。</li>
+                </ol>
+                <p>原则：<strong>先修模型，再调参数</strong>。大多数“求解慢”的根因在建模，而不在参数。</p>
+            </details>
+        </section>
+
         <h2>本章小结</h2>
 
         <p>这一章我们从零开始搭建了求解器环境，用设施选址问题实战了Gurobi和PuLP的建模流程，学习了求解器参数调优的核心技巧，掌握了Callback编程这一高阶技能，并学会了如何从Gurobi日志中诊断性能问题。</p>
@@ -530,7 +582,7 @@ Optimal objective -1.209000e+04
             <a href="index.html">📖 返回目录</a>
             <a href="24.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
 </body>
