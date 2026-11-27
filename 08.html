@@ -158,6 +158,44 @@
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="ffHead">
+            <h3 id="ffHead">交互演示：逐步寻找增广路</h3>
+            <p>对图 1 的网络按 Ford–Fulkerson 找增广路。点击“下一步”逐步推进；“显示全部”一次看完整过程（无脚本时默认全部可见，教学演示）。</p>
+            <ol id="ffSteps" class="walk">
+                <li>初始：所有边流量为 0，最大流值 |f| = 0。</li>
+                <li>第 1 条增广路 s→a→t，瓶颈 = min(10, 5) = 5。增广后 s→a = 5、a→t = 5，|f| = 5。</li>
+                <li>第 2 条增广路 s→b→t，瓶颈 = min(5, 10) = 5。增广后 s→b = 5、b→t = 5，|f| = 10。</li>
+                <li>残差网络中 s→b 与 a→t 已无剩余容量，s 只能到达 a，故无 s→t 增广路，算法停止；此时 S = {s, a}、T = {b, t} 就是容量 10 的最小割。</li>
+            </ol>
+            <p>
+                <button type="button" data-walk="prev">上一步</button>
+                <button type="button" data-walk="next">下一步</button>
+                <button type="button" data-walk="all">显示全部</button>
+                <button type="button" data-walk="reset">重置</button>
+            </p>
+            <p id="ffPanel" aria-live="polite">进度：第 1 / 4 步。</p>
+        </section>
+        <script>
+        (function () {
+            var ol = document.getElementById('ffSteps'); if (!ol) return;
+            var li = [].slice.call(ol.children), i = 0;
+            var out = document.getElementById('ffPanel');
+            function draw(all) {
+                for (var k = 0; k < li.length; k++) { li[k].style.display = (all || k <= i) ? '' : 'none'; }
+                out.textContent = all ? '已显示全部 ' + li.length + ' 步。' : '进度：第 ' + (i + 1) + ' / ' + li.length + ' 步。';
+            }
+            function go(act) {
+                if (act === 'next') { i = Math.min(i + 1, li.length - 1); draw(false); }
+                else if (act === 'prev') { i = Math.max(i - 1, 0); draw(false); }
+                else if (act === 'reset') { i = 0; draw(false); }
+                else { draw(true); }
+            }
+            var bs = document.querySelectorAll('[data-walk]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { go(this.getAttribute('data-walk')); }); }
+            draw(false);
+        })();
+        </script>
+
         <h2>残差网络与增广路</h2>
 
         <p>最大流问题的核心思想其实很简单：先随便找一些路径送流量，把边占满，然后看看有没有办法"调整"已有的流，让总流量更大。而"调整"的数学工具，就是<strong>残差网络（Residual Network）</strong>。</p>
