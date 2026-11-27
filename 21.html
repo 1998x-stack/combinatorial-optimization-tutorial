@@ -392,6 +392,44 @@ return S</code></pre>
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="vcRunHead">
+            <h3 id="vcRunHead">交互演示：在 5-环上跑一遍顶点覆盖贪心</h3>
+            <p>图是 5-环 1-2-3-4-5-1。点击“下一步”逐步执行“取未覆盖边→把两端点入解”的贪心（无脚本时默认全部可见，教学演示）。</p>
+            <ol id="vcSteps" class="walk">
+                <li>初始：贪心解 C = ∅，环上五条边均未被覆盖。</li>
+                <li>取未覆盖边 (1,2)，把端点 1、2 加入 C，删去与 1、2 关联的边。C = {1,2}，剩余未覆盖边：(3,4)、(4,5)。</li>
+                <li>取未覆盖边 (3,4)，把端点 3、4 加入 C。C = {1,2,3,4}，边 (4,5) 已被端点 4 覆盖。</li>
+                <li>已无未覆盖边，算法停止：C 大小 = 4。该 5-环的最优覆盖大小为 3（如 {2,3,5}），4 ≤ 2×3，与 2-近似保证一致；选出的边 (1,2)、(3,4) 互不相邻，构成下界匹配。</li>
+            </ol>
+            <p>
+                <button type="button" data-walk="prev">上一步</button>
+                <button type="button" data-walk="next">下一步</button>
+                <button type="button" data-walk="all">显示全部</button>
+                <button type="button" data-walk="reset">重置</button>
+            </p>
+            <p id="vcPanel" aria-live="polite">进度：第 1 / 4 步。</p>
+        </section>
+        <script>
+        (function () {
+            var ol = document.getElementById('vcSteps'); if (!ol) return;
+            var li = [].slice.call(ol.children), i = 0;
+            var out = document.getElementById('vcPanel');
+            function draw(all) {
+                for (var k = 0; k < li.length; k++) { li[k].style.display = (all || k <= i) ? '' : 'none'; }
+                out.textContent = all ? '已显示全部 ' + li.length + ' 步。' : '进度：第 ' + (i + 1) + ' / ' + li.length + ' 步。';
+            }
+            function go(act) {
+                if (act === 'next') { i = Math.min(i + 1, li.length - 1); draw(false); }
+                else if (act === 'prev') { i = Math.max(i - 1, 0); draw(false); }
+                else if (act === 'reset') { i = 0; draw(false); }
+                else { draw(true); }
+            }
+            var bs = document.querySelectorAll('[data-walk]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { go(this.getAttribute('data-walk')); }); }
+            draw(false);
+        })();
+        </script>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
