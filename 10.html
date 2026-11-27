@@ -151,6 +151,44 @@
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="flipHead">
+            <h3 id="flipHead">交互演示：逐步翻转增广路</h3>
+            <p>在路径图 a ─ b ─ c ─ d 上（=== 为匹配边），点击“下一步”逐步追踪一次增广与翻转（无脚本时默认全部可见，教学演示）。</p>
+            <ol id="flipSteps" class="walk">
+                <li>初始匹配 M = { b-c }，匹配大小 = 1；端点 a 与 d 尚未被匹配。</li>
+                <li>从 a 出发搜增广路：a ─ b === c ─ d。它从非匹配边 a-b 开始、以非匹配边 c-d 结束，是一条两端都未匹配的交替路。</li>
+                <li>沿路翻转：匹配边与非匹配边互换，得到 M = { a-b, c-d }，匹配大小 = 2。</li>
+                <li>此时 a、d 都已被匹配，图中再无增广路；由 Berge 引理，当前匹配已是最大匹配（大小 2）。</li>
+            </ol>
+            <p>
+                <button type="button" data-walk="prev">上一步</button>
+                <button type="button" data-walk="next">下一步</button>
+                <button type="button" data-walk="all">显示全部</button>
+                <button type="button" data-walk="reset">重置</button>
+            </p>
+            <p id="flipPanel" aria-live="polite">进度：第 1 / 4 步。</p>
+        </section>
+        <script>
+        (function () {
+            var ol = document.getElementById('flipSteps'); if (!ol) return;
+            var li = [].slice.call(ol.children), i = 0;
+            var out = document.getElementById('flipPanel');
+            function draw(all) {
+                for (var k = 0; k < li.length; k++) { li[k].style.display = (all || k <= i) ? '' : 'none'; }
+                out.textContent = all ? '已显示全部 ' + li.length + ' 步。' : '进度：第 ' + (i + 1) + ' / ' + li.length + ' 步。';
+            }
+            function go(act) {
+                if (act === 'next') { i = Math.min(i + 1, li.length - 1); draw(false); }
+                else if (act === 'prev') { i = Math.max(i - 1, 0); draw(false); }
+                else if (act === 'reset') { i = 0; draw(false); }
+                else { draw(true); }
+            }
+            var bs = document.querySelectorAll('[data-walk]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { go(this.getAttribute('data-walk')); }); }
+            draw(false);
+        })();
+        </script>
+
         <h2>Hall婚姻定理</h2>
 
         <p>现在让我们进入二分图匹配理论中最经典的定理。<strong>Hall婚姻定理（Hall's Marriage Theorem）</strong>回答了一个基本问题：什么时候二分图存在完美匹配？</p>
