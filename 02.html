@@ -229,6 +229,31 @@ adj[v].push_back(u);  // 无向图</code></pre>
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="bfsRunHead">
+            <h3 id="bfsRunHead">交互演示：换一个起点跑 BFS</h3>
+            <p>图 1 中的图为 A–B、A–C、A–D、B–C、D–E。点击下面的起点按钮，页面用 BFS 即时算出到各顶点的最少边数（离线教学演示）。</p>
+            <p>
+                <button type="button" data-bfs="A">起点 A</button>
+                <button type="button" data-bfs="B">起点 B</button>
+                <button type="button" data-bfs="C">起点 C</button>
+                <button type="button" data-bfs="D">起点 D</button>
+                <button type="button" data-bfs="E">起点 E</button>
+            </p>
+            <p id="bfsPanel" aria-live="polite">当前起点：A。dist：A = 0，B = 1，C = 1，D = 1，E = 2（层数即最少边数）。</p>
+        </section>
+        <script>
+        (function () {
+            var adj = { A: ['B', 'C', 'D'], B: ['A', 'C'], C: ['A', 'B'], D: ['A', 'E'], E: ['D'] };
+            var order = ['A', 'B', 'C', 'D', 'E'];
+            var out = document.getElementById('bfsPanel');
+            if (!out) return;
+            function bfs(s) { var d = {}, q = [s]; d[s] = 0; for (var h = 0; h < q.length; h++) { adj[q[h]].forEach(function (v) { if (!(v in d)) { d[v] = d[q[h]] + 1; q.push(v); } }); } return d; }
+            function show(s) { var d = bfs(s); out.textContent = '当前起点：' + s + '。dist：' + order.map(function (v) { return v + ' = ' + (v in d ? d[v] : '∞'); }).join('，') + '（层数即最少边数）。'; }
+            var btns = document.querySelectorAll('[data-bfs]');
+            for (var i = 0; i < btns.length; i++) { btns[i].addEventListener('click', function () { show(this.getAttribute('data-bfs')); }); }
+        })();
+        </script>
+
         <h2>树与生成树</h2>
 
         <h3>树的性质</h3>
