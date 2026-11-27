@@ -362,6 +362,35 @@ s.t. Ax ≤ b
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="roundHead">
+            <h3 id="roundHead">交互演示：取整到底错在哪</h3>
+            <p>仍然是 max 3x + 2y，s.t. x + y ≤ 1.9，x、y 非负整数。点击按钮查看每个候选点的可行性、目标值以及它到底是松弛解、取整解还是整数最优（教学演示，离线计算）。</p>
+            <p>
+                <button type="button" data-opt="lp">LP 松弛最优 (1.9, 0)</button>
+                <button type="button" data-opt="down">向下取整 (1, 0)</button>
+                <button type="button" data-opt="up">向上取整 (2, 0)</button>
+                <button type="button" data-opt="int">整数最优 (1, 0)</button>
+            </p>
+            <p id="roundPanel" aria-live="polite">选择一个候选点查看它的可行性与目标值。</p>
+        </section>
+        <script>
+        (function () {
+            var opts = {
+                lp: { x: 1.9, y: 0, t: 'LP 松弛最优' },
+                down: { x: 1, y: 0, t: '向下取整' },
+                up: { x: 2, y: 0, t: '向上取整' },
+                int: { x: 1, y: 0, t: '整数最优' }
+            };
+            var out = document.getElementById('roundPanel'); if (!out) return;
+            function show(k) {
+                var o = opts[k], feas = (o.x + o.y <= 1.9), z = (3 * o.x + 2 * o.y).toFixed(1);
+                out.textContent = o.t + '：(' + o.x + ', ' + o.y + ')，约束 x + y ≤ 1.9 ' + (feas ? '满足，' : '被违反（不可行），') + 'z = ' + z + '。';
+            }
+            var bs = document.querySelectorAll('[data-opt]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { show(this.getAttribute('data-opt')); }); }
+        })();
+        </script>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
