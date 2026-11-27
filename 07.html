@@ -382,6 +382,30 @@ Optimal solution found (gap = 0.00%)</code></pre>
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="gapRunHead">
+            <h3 id="gapRunHead">交互演示：换组下界看看 Gap</h3>
+            <p>选择下方场景，页面即时按 Gap = (UB − LB) / UB 算出最优性间隙，并判断能否以 MIPGap = 10% 提前终止（教学演示）。</p>
+            <p>
+                <button type="button" data-case="A">场景 A：UB 100 · LB 92</button>
+                <button type="button" data-case="B">场景 B：UB 120 · LB 90</button>
+                <button type="button" data-case="C">场景 C：UB 200 · LB 199</button>
+            </p>
+            <p id="gapPanel" aria-live="polite">选择上方场景查看 Gap 与终止判断。</p>
+        </section>
+        <script>
+        (function () {
+            var cases = { A: [100, 92], B: [120, 90], C: [200, 199] };
+            var out = document.getElementById('gapPanel'); if (!out) return;
+            function show(k) {
+                var c = cases[k], gap = (c[0] - c[1]) / c[0] * 100;
+                var verdict = gap <= 10 ? 'Gap ≤ 10%，可以提前终止并接受当前解。' : 'Gap > 10%，需要继续分支收紧下界。';
+                out.textContent = '场景 ' + k + '：UB = ' + c[0] + '，LB = ' + c[1] + '，Gap = ' + gap.toFixed(1) + '%。' + verdict;
+            }
+            var bs = document.querySelectorAll('[data-case]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { show(this.getAttribute('data-case')); }); }
+        })();
+        </script>
+
         <h2>本章小结与下章预告</h2>
 
         <p>在这一章中，我们学习了：</p>
