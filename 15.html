@@ -97,9 +97,9 @@
         <p>每一步都有明确的目标：</p>
 
         <ul>
-            <li><strong>Presolve（预求解）</strong>——在不改变解空间的前提下，缩小问题规模。这一步通常能消除50%~90%的变量和约束。</li>
+            <li><strong>Presolve（预求解）</strong>——在不改变解空间的前提下，缩小问题规模。这一步通常能消除50%~90%的变量和约束（区间为教学示意，实际比例依模型而定）。</li>
             <li><strong>Root LP Relaxation（根节点LP松弛）</strong>——把整数变量全部松弛为连续变量，求一个LP下界。这个下界是后续所有剪枝的基准。</li>
-            <li><strong>Cut Loop（割平面循环）</strong>——在根节点添加多个割平面来收紧松弛，提高下界。Gurobi的根节点通常耗时约占整个求解过程的10%~30%。</li>
+            <li><strong>Cut Loop（割平面循环）</strong>——在根节点添加多个割平面来收紧松弛，提高下界。Gurobi的根节点通常耗时约占整个求解过程的10%~30%（教学示意，不同模型差异很大）。</li>
             <li><strong>Branch-and-Bound Tree（分支定界树）</strong>——对整数变量进行分支，在每个节点上求解LP松弛，利用界进行剪枝。</li>
             <li><strong>Heuristics（启发式）</strong>——在分支过程中穿插运行，快速寻找可行解，提供上界。</li>
         </ul>
@@ -140,6 +140,8 @@
                 </tr>
             </tbody>
         </table>
+
+        <p>表中各阶段耗时占比为量级示意（教学简化），实际分布随模型结构、参数配置与硬件差异很大，不应作为性能基准。</p>
 
         <p>衡量求解器“离最优还有多远”的标准尺度是<strong>相对对偶间隙（MIP Gap）</strong>：</p>
 
@@ -188,7 +190,7 @@ s.t. x + y ≤ 10
         <p>对约束的系数做最大公约数化简。比如 <code>6x + 9y ≤ 12</code> 可以除以3得到 <code>2x + 3y ≤ 4</code>，数值稳定性更好，LP求解更快。</p>
 
         <div class="highlight">
-            <strong>关键洞察：</strong>我见过一个真实案例——一个航空排班问题，原始模型有200万变量和500万约束。经过Gurobi的Presolve之后，只剩下30万变量和80万约束，缩减了85%的规模。Presolve后的模型在3分钟内求解完成，而如果不经过Presolve直接求解，10小时后Gap仍然高达40%。由此可见，Presolve不是"锦上添花"，很多时候是"雪中送炭"。
+            <strong>关键洞察：</strong>我见过一个真实案例——一个航空排班问题，原始模型有200万变量和500万约束。经过Gurobi的Presolve之后，只剩下30万变量和80万约束，缩减了85%的规模。Presolve后的模型在3分钟内求解完成，而如果不经过Presolve直接求解，10小时后Gap仍然高达40%（本段数值为教学示例，用以说明Presolve的量级收益，非可核验的实测基准）。由此可见，Presolve不是"锦上添花"，很多时候是"雪中送炭"。
         </div>
 
         <p>但Presolve也有副作用。有些约简技术会破坏问题的结构——例如，聚合变量（variable aggregation）虽然减少了变量数，但可能让问题的约束矩阵变得更稠密，反而拖慢后续的LP求解。高级用户可以通过Gurobi的 <code>PreDual</code> 和 <code>PreDepRow</code> 参数微调Presolve的行为。</p>
