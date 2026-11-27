@@ -216,6 +216,35 @@ for each activity (s, f) in sorted order:
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="knapHead2">
+            <h3 id="knapHead2">交互演示：手动挑一个 0/1 背包解</h3>
+            <p>容量仍为 50。点击物品按钮切换“装入/取出”，页面即时算出总重与总价值，并判断是否可行（教学演示，离线计算）。</p>
+            <p>
+                <button type="button" data-item="A" aria-pressed="false">A（重 10·值 60）</button>
+                <button type="button" data-item="B" aria-pressed="false">B（重 20·值 100）</button>
+                <button type="button" data-item="C" aria-pressed="false">C（重 30·值 120）</button>
+                <button type="button" data-act="clear">清空</button>
+            </p>
+            <p id="knapPanel" aria-live="polite">当前未选物品：总重 0、总价值 0（可行）。对照：性价比贪心 160、最优 220。</p>
+        </section>
+        <script>
+        (function () {
+            var items = { A: { w: 10, v: 60 }, B: { w: 20, v: 100 }, C: { w: 30, v: 120 } };
+            var chosen = {}, cap = 50;
+            var out = document.getElementById('knapPanel'); if (!out) return;
+            var btns = document.querySelectorAll('[data-item]');
+            function draw() {
+                var w = 0, v = 0, names = [];
+                Object.keys(items).forEach(function (k) { if (chosen[k]) { w += items[k].w; v += items[k].v; names.push(k); } });
+                var head = names.length ? '已选 ' + names.join('+') : '当前未选物品';
+                out.textContent = head + '：总重 ' + w + '、总价值 ' + v + '（' + (w <= cap ? '可行' : '超容量，不可行') + '）。对照：性价比贪心 160、最优 220。';
+            }
+            for (var i = 0; i < btns.length; i++) { btns[i].addEventListener('click', function () { var k = this.getAttribute('data-item'); chosen[k] = !chosen[k]; this.setAttribute('aria-pressed', chosen[k] ? 'true' : 'false'); draw(); }); }
+            var clr = document.querySelector('[data-act="clear"]');
+            if (clr) clr.addEventListener('click', function () { chosen = {}; for (var j = 0; j < btns.length; j++) { btns[j].setAttribute('aria-pressed', 'false'); } draw(); });
+        })();
+        </script>
+
         <h2>贪心正确性的条件</h2>
 
         <h3>贪心选择性质</h3>
