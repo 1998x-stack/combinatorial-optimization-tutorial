@@ -200,6 +200,32 @@ s.t. Ax ≤ b
             </details>
         </section>
 
+        <section class="widget" aria-labelledby="zvHead">
+            <h3 id="zvHead">交互演示：逐个顶点算 z = 3x + 2y</h3>
+            <p>点击顶点按钮，页面即时算出该顶点的目标值，并告诉你它是否为可行域上的最大值（教学演示，离线计算）。</p>
+            <p>
+                <button type="button" data-pt="A">(0, 0)</button>
+                <button type="button" data-pt="B">(4, 0)</button>
+                <button type="button" data-pt="C">(4, 1)</button>
+                <button type="button" data-pt="D">(2, 3)</button>
+                <button type="button" data-pt="E">(0, 3)</button>
+            </p>
+            <p id="zvPanel" aria-live="polite">选择一个顶点查看它的 z 值。</p>
+        </section>
+        <script>
+        (function () {
+            var pts = { A: [0, 0], B: [4, 0], C: [4, 1], D: [2, 3], E: [0, 3] };
+            var out = document.getElementById('zvPanel'); if (!out) return;
+            function z(p) { return 3 * p[0] + 2 * p[1]; }
+            function show(k) {
+                var p = pts[k], val = z(p), best = (val === 14);
+                out.textContent = '(' + p[0] + ', ' + p[1] + ') 的 z = 3×' + p[0] + ' + 2×' + p[1] + ' = ' + val + (best ? '，这是可行域上的最大值 14。' : '；小于最大值 14（在 (4, 1) 处取得）。');
+            }
+            var bs = document.querySelectorAll('[data-pt]');
+            for (var j = 0; j < bs.length; j++) { bs[j].addEventListener('click', function () { show(this.getAttribute('data-pt')); }); }
+        })();
+        </script>
+
         <h2>单纯形法</h2>
 
         <p><strong>单纯形法（Simplex Method）</strong>由 George Dantzig 在1947年发明，是求解线性规划最经典也最广泛使用的算法。虽然理论上是"指数时间"的（某些构造出的反例需要指数次迭代），但在实际问题中它的表现极好——平均迭代次数是 O(m) 到 O(2m) 级别（m 是约束数量）。</p>
